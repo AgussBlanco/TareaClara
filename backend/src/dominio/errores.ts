@@ -16,8 +16,8 @@ export class ErrorValidacion extends Error {
 
 /** No se pudo saber quién hace la petición: se responde 401. */
 export class ErrorNoAutenticado extends Error {
-  constructor() {
-    super("Falta iniciar sesión o la sesión venció. Volvé a ingresar.");
+  constructor(mensaje = "Falta iniciar sesión o la sesión venció. Volvé a ingresar.") {
+    super(mensaje);
     this.name = "ErrorNoAutenticado";
   }
 }

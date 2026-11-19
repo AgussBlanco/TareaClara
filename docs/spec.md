@@ -17,7 +17,7 @@ estudio, y ven de un vistazo qué está vencido o por vencer. Cada estudiante ti
 
 | N.º | Regla |
 |---|---|
-| RN-01 | Para registrarse hacen falta nombre (2 a 60 caracteres), email válido y contraseña de al menos 8 caracteres. |
+| RN-01 | Para registrarse hacen falta nombre (2 a 60 caracteres), email válido y contraseña de 8 a 200 caracteres. |
 | RN-02 | El email es único sin importar mayúsculas o minúsculas y se guarda en minúsculas. Si ya existe, el registro se rechaza (409). |
 | RN-03 | La contraseña se guarda con scrypt y una sal aleatoria por usuario. Nunca se devuelve en una respuesta ni se escribe en los registros del servidor. |
 | RN-04 | Con email y contraseña correctos, el login entrega un token JWT que vence a los 7 días. Si falla, la respuesta es siempre la misma (401, «El email o la contraseña no son correctos.») y no revela si el email existe. |

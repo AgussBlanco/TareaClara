@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
-import { ErrorNoAutenticado, ErrorValidacion } from "../dominio/errores";
+import { ErrorConflicto, ErrorNoAutenticado, ErrorNoEncontrado, ErrorValidacion } from "../dominio/errores";
 
 function tipoDeErrorHttp(error: unknown): string | undefined {
   if (typeof error === "object" && error !== null && "type" in error) {
@@ -25,6 +25,15 @@ export const manejadorErrores: ErrorRequestHandler = (error, _req, res, _next) =
   }
   if (error instanceof ErrorNoAutenticado) {
     res.status(401).json({ error: { codigo: "NO_AUTENTICADO", mensaje: error.message } });
+    return;
+  }
+
+  if (error instanceof ErrorNoEncontrado) {
+    res.status(404).json({ error: { codigo: "NO_ENCONTRADO", mensaje: error.message } });
+    return;
+  }
+  if (error instanceof ErrorConflicto) {
+    res.status(409).json({ error: { codigo: "CONFLICTO", mensaje: error.message } });
     return;
   }
 
