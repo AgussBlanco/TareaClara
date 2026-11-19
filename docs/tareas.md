@@ -3,7 +3,7 @@
 Cada tarea tiene un commit con su número. Se marca `[x]` cuando sus tests pasan.
 
 - [x] **T01** Preparar el repositorio: spec numerada, AGENTS.md, plan y lista de tareas.
-- [ ] **T02** Pasar la base a PostgreSQL: capa de conexión, migraciones y tests con PGlite.
+- [x] **T02** Pasar la base a PostgreSQL: capa de conexión, migraciones y tests con PGlite.
 - [ ] **T03** Repositorios de usuarios y tareas sobre PostgreSQL.
 - [ ] **T04** Registro e inicio de sesión: scrypt, JWT, límite de intentos (RN-01 a RN-06).
 - [ ] **T05** API de tareas: crear, listar, ver, editar y eliminar (RN-07 a RN-14, RN-18, RN-20).
