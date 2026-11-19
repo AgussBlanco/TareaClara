@@ -30,9 +30,15 @@ export interface Tarea {
   fechaCompletada: string | null;
 }
 
-export interface UsuarioNuevo {
+/** Lo que se puede mostrar de un usuario: nunca el hash de la contraseña (RN-03). */
+export interface Usuario {
   id: string;
   nombre: string;
   email: string;
+}
+
+export interface UsuarioConHash extends Usuario {
   contrasenaHash: string;
 }
+
+export const MAX_MATERIAL_POR_TAREA = 20; // RN-23

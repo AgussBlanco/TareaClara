@@ -1,23 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ErrorValidacion, type DetalleValidacion } from "../src/dominio/errores";
-import type { Tarea } from "../src/dominio/tipos";
-import type { TareaRepositorio } from "../src/repositorios/tareaRepositorio";
 import { TareaServicio } from "../src/servicios/tareaServicio";
-
-// Repositorio falso en memoria: permite probar las reglas de negocio sin base de datos.
-// Es posible justamente porque el servicio solo depende de la interfaz TareaRepositorio.
-class RepositorioEnMemoria implements TareaRepositorio {
-  readonly guardadas: Tarea[] = [];
-
-  async crear(tarea: Tarea): Promise<Tarea> {
-    this.guardadas.push(tarea);
-    return tarea;
-  }
-
-  async listarPorUsuario(usuarioId: string): Promise<Tarea[]> {
-    return this.guardadas.filter((t) => t.usuarioId === usuarioId);
-  }
-}
+import { RepositorioEnMemoria } from "./ayudas/repositorioEnMemoria";
 
 const AHORA = new Date("2026-11-17T15:30:00.000Z");
 
@@ -65,7 +49,7 @@ describe("TareaServicio.crearTarea: casos correctos", () => {
       fechaCreacion: "2026-11-17T15:30:00.000Z",
       fechaCompletada: null,
     });
-    expect(repositorio.guardadas).toHaveLength(1);
+    expect(repositorio.tareas).toHaveLength(1);
   });
 
   it("usa prioridad Media y descripción vacía cuando no se envían", async () => {
@@ -187,7 +171,7 @@ describe("TareaServicio.crearTarea: datos inválidos", () => {
   it("no guarda nada cuando los datos son inválidos", async () => {
     const { servicio, repositorio } = crearServicio();
     await detallesDe(servicio.crearTarea("ana", { titulo: "" }));
-    expect(repositorio.guardadas).toHaveLength(0);
+    expect(repositorio.tareas).toHaveLength(0);
   });
 });
 

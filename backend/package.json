@@ -11,15 +11,13 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
-    "seed": "tsx src/scripts/seed.ts"
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "private": "true",
   "dependencies": {
-    "better-sqlite3": "^13.2.0",
     "cors": "^2.8.6",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.5",
@@ -28,7 +26,6 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.17",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",

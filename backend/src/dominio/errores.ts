@@ -17,7 +17,23 @@ export class ErrorValidacion extends Error {
 /** No se pudo saber quién hace la petición: se responde 401. */
 export class ErrorNoAutenticado extends Error {
   constructor() {
-    super("Falta identificarse o el usuario no existe.");
+    super("Falta iniciar sesión o la sesión venció. Volvé a ingresar.");
     this.name = "ErrorNoAutenticado";
+  }
+}
+
+/** El recurso no existe o no pertenece al usuario: se responde 404 (RN-07). */
+export class ErrorNoEncontrado extends Error {
+  constructor(mensaje = "No se encontró lo que buscabas.") {
+    super(mensaje);
+    this.name = "ErrorNoEncontrado";
+  }
+}
+
+/** La petición choca con el estado actual de los datos (email repetido, límite de material): se responde 409. */
+export class ErrorConflicto extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "ErrorConflicto";
   }
 }

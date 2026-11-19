@@ -1,11 +1,11 @@
 import express, { type Express } from "express";
-import type { BaseDeDatos } from "./db/conexion";
+import type { BaseDatos } from "./db/baseDatos";
 import { TareaControlador } from "./controladores/tareaControlador";
 import { crearIdentificarUsuario } from "./middlewares/identificarUsuario";
 import { manejadorErrores, rutaNoEncontrada } from "./middlewares/manejadorErrores";
-import { TareaRepositorioSqlite } from "./repositorios/tareaRepositorioSqlite";
+import { TareaRepositorioPg } from "./repositorios/tareaRepositorioPg";
 import type { UsuarioRepositorio } from "./repositorios/usuarioRepositorio";
-import { UsuarioRepositorioSqlite } from "./repositorios/usuarioRepositorioSqlite";
+import { UsuarioRepositorioPg } from "./repositorios/usuarioRepositorioPg";
 import { crearRutasTareas } from "./rutas/tareaRutas";
 import { TareaServicio } from "./servicios/tareaServicio";
 
@@ -31,10 +31,10 @@ export function crearApp({ tareaServicio, usuarios }: Dependencias): Express {
   return app;
 }
 
-/** Conecta las capas con la implementación SQLite: Repositorio -> Servicio -> Controlador. */
-export function componer(db: BaseDeDatos): Express {
+/** Conecta las capas con la implementación PostgreSQL: Repositorio -> Servicio -> Controlador. */
+export function componer(db: BaseDatos): Express {
   return crearApp({
-    tareaServicio: new TareaServicio(new TareaRepositorioSqlite(db)),
-    usuarios: new UsuarioRepositorioSqlite(db),
+    tareaServicio: new TareaServicio(new TareaRepositorioPg(db)),
+    usuarios: new UsuarioRepositorioPg(db),
   });
 }
