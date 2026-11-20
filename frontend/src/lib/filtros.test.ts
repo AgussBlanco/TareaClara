@@ -2,20 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { Tarea } from "../types";
 import { FILTROS_INICIALES, filtrarTareas, hayFiltrosActivos } from "./filtros";
 import { resumirTareas } from "./resumen";
-import { crearTarea } from "./tareas";
+import { tareaDePrueba } from "./tareaDePrueba";
 
 function tarea(titulo: string, extra: Partial<Tarea> = {}): Tarea {
-  return {
-    ...crearTarea("u1", {
-      titulo,
-      descripcion: "",
-      materia: "Matemática",
-      fechaLimite: "2026-10-10",
-      prioridad: "Media",
-      nota: null,
-    }),
-    ...extra,
-  };
+  return tareaDePrueba({ titulo, ...extra });
 }
 
 const lista = [

@@ -4,8 +4,9 @@ import { useTareas } from "../hooks/useTareas";
 import { FILTROS_INICIALES, filtrarTareas, type Filtros } from "../lib/filtros";
 import { resumirTareas } from "../lib/resumen";
 import { materiasDe, ordenarTareas } from "../lib/tareas";
-import { almacenamientoPersistente } from "../storage/storage";
-import type { UsuarioPublico } from "../types";
+import { useLento } from "../hooks/useLento";
+import type { Api } from "../lib/api";
+import type { Usuario } from "../types";
 import { FiltrosBarra } from "./FiltrosBarra";
 import { ResumenTareas } from "./ResumenTareas";
 import { TaskCard } from "./TaskCard";
@@ -14,13 +15,15 @@ import { TaskForm } from "./TaskForm";
 type Vista = "activas" | "ocultas";
 
 interface Props {
-  usuario: UsuarioPublico;
+  api: Api;
+  usuario: Usuario;
   onCerrarSesion: () => void;
 }
 
-export function Tablero({ usuario, onCerrarSesion }: Props) {
+export function Tablero({ api, usuario, onCerrarSesion }: Props) {
   const ahora = useAhora();
-  const tareas = useTareas(usuario.id);
+  const tareas = useTareas(api);
+  const lento = useLento(tareas.cargando || tareas.guardando);
   const [vista, setVista] = useState<Vista>("activas");
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [creando, setCreando] = useState(false);
@@ -49,14 +52,19 @@ export function Tablero({ usuario, onCerrarSesion }: Props) {
       <main className="contenido">
         <h1 className="titulo-pagina">Mis tareas</h1>
 
-        {!almacenamientoPersistente && (
-          <p className="aviso aviso-error" role="alert">
-            El navegador bloquea el almacenamiento: las tareas se perderán al cerrar la pestaña.
+        {lento && (
+          <p className="aviso" role="status">
+            El servidor gratuito está despertando; puede tardar hasta un minuto. No cierres la página.
           </p>
         )}
-        {tareas.errorGuardado && (
+        {tareas.error && (
           <p className="aviso aviso-error" role="alert">
-            {tareas.errorGuardado}
+            {tareas.error}{" "}
+            {tareas.tareas.length === 0 && (
+              <button type="button" className="boton boton-chico" onClick={() => void tareas.recargar()}>
+                Reintentar
+              </button>
+            )}
           </p>
         )}
 
@@ -81,10 +89,14 @@ export function Tablero({ usuario, onCerrarSesion }: Props) {
         {creando && (
           <TaskForm
             materias={materias}
-            onGuardar={(datos) => {
-              tareas.crear(datos);
-              setCreando(false);
-              setVista("activas");
+            guardando={tareas.guardando}
+            onGuardar={async (datos) => {
+              const ok = await tareas.crear(datos);
+              if (ok) {
+                setCreando(false);
+                setVista("activas");
+              }
+              return ok;
             }}
             onCancelar={() => setCreando(false)}
           />
@@ -92,7 +104,11 @@ export function Tablero({ usuario, onCerrarSesion }: Props) {
 
         <FiltrosBarra filtros={filtros} materias={materias} onCambiar={setFiltros} />
 
-        {visibles.length === 0 ? (
+        {tareas.cargando ? (
+          <div className="vacio" role="status">
+            <p>Cargando tus tareas…</p>
+          </div>
+        ) : visibles.length === 0 ? (
           <div className="vacio">
             {enVista.length === 0 ? (
               <p>
@@ -117,9 +133,13 @@ export function Tablero({ usuario, onCerrarSesion }: Props) {
                   <TaskForm
                     inicial={tarea}
                     materias={materias}
-                    onGuardar={(datos) => {
-                      tareas.editar(tarea.id, datos);
-                      setEditandoId(null);
+                    guardando={tareas.guardando}
+                    onGuardar={async (datos) => {
+                      const ok = await tareas.editar(tarea.id, datos);
+                      if (ok) {
+                        setEditandoId(null);
+                      }
+                      return ok;
                     }}
                     onCancelar={() => setEditandoId(null)}
                   />
@@ -127,12 +147,16 @@ export function Tablero({ usuario, onCerrarSesion }: Props) {
                   <TaskCard
                     tarea={tarea}
                     ahora={ahora}
+                    ocupado={tareas.guardando}
                     onCambiarEstado={tareas.cambiarEstado}
                     onEditar={setEditandoId}
-                    onAlternarOculta={tareas.alternarOculta}
-                    onEliminar={(id) => {
-                      tareas.eliminar(id);
-                      setEditandoId((actual) => (actual === id ? null : actual));
+                    onAlternarOculta={(t) => tareas.cambiarOculta(t.id, !t.oculta)}
+                    onEliminar={async (id) => {
+                      const ok = await tareas.eliminar(id);
+                      if (ok) {
+                        setEditandoId((actual) => (actual === id ? null : actual));
+                      }
+                      return ok;
                     }}
                     onAgregarMaterial={tareas.agregarMaterial}
                     onQuitarMaterial={tareas.quitarMaterial}

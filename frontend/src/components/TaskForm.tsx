@@ -11,7 +11,9 @@ import { Campo, propsDeError } from "./Campo";
 interface Props {
   inicial?: Tarea;
   materias: string[];
-  onGuardar: (datos: DatosTarea) => void;
+  guardando: boolean;
+  /** El formulario no se cierra solo: lo cierra quien lo usa cuando el servidor confirma. */
+  onGuardar: (datos: DatosTarea) => Promise<boolean>;
   onCancelar: () => void;
 }
 
@@ -29,7 +31,7 @@ function borradorInicial(tarea?: Tarea): BorradorTarea {
   };
 }
 
-export function TaskForm({ inicial, materias, onGuardar, onCancelar }: Props) {
+export function TaskForm({ inicial, materias, guardando, onGuardar, onCancelar }: Props) {
   const uid = useId();
   const [borrador, setBorrador] = useState<BorradorTarea>(() => borradorInicial(inicial));
   const [errores, setErrores] = useState<Errores>({});
@@ -47,7 +49,7 @@ export function TaskForm({ inicial, materias, onGuardar, onCancelar }: Props) {
       return;
     }
     setErrores({});
-    onGuardar(resultado.datos);
+    void onGuardar(resultado.datos);
   }
 
   const id = (campo: string) => `${uid}-${campo}`;
@@ -126,7 +128,7 @@ export function TaskForm({ inicial, materias, onGuardar, onCancelar }: Props) {
       </Campo>
 
       <div className="acciones">
-        <button type="submit" className="boton boton-principal">
+        <button type="submit" className="boton boton-principal" disabled={guardando}>
           {editando ? "Guardar cambios" : "Crear tarea"}
         </button>
         <button type="button" className="boton" onClick={onCancelar}>

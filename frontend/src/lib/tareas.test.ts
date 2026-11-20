@@ -1,101 +1,25 @@
 import { describe, expect, it } from "vitest";
-import type { DatosTarea, Tarea } from "../types";
-import {
-  agregarMaterial,
-  alternarOculta,
-  cambiarEstado,
-  crearTarea,
-  editarTarea,
-  materiasDe,
-  ordenarTareas,
-  quitarMaterial,
-} from "./tareas";
-
-const datos: DatosTarea = {
-  titulo: "TP de funciones",
-  descripcion: "Ejercicios 1 al 5",
-  materia: "Matemática",
-  fechaLimite: "2026-10-10",
-  prioridad: "Media",
-  nota: null,
-};
-
-const ahora = new Date("2026-10-02T21:30:00.000Z");
+import type { Tarea } from "../types";
+import { tareaDePrueba } from "./tareaDePrueba";
+import { materiasDe, ordenarTareas, quitarTarea, reemplazarTarea } from "./tareas";
 
 function tarea(titulo: string, extra: Partial<Tarea> = {}): Tarea {
-  return { ...crearTarea("u1", { ...datos, titulo }, ahora), ...extra };
+  return tareaDePrueba({ titulo, ...extra });
 }
 
-describe("crearTarea", () => {
-  it("arranca 'No completada', visible, sin material y sin fecha de completado", () => {
-    const t = crearTarea("u1", datos, ahora);
-    expect(t.usuarioId).toBe("u1");
-    expect(t.estado).toBe("No completada");
-    expect(t.oculta).toBe(false);
-    expect(t.materialEstudio).toEqual([]);
-    expect(t.fechaCompletada).toBeNull();
-    expect(t.fechaCreacion).toBe(ahora.toISOString());
-    expect(t.titulo).toBe("TP de funciones");
+describe("reemplazarTarea y quitarTarea", () => {
+  it("reemplaza solo la tarea con ese id, sin mutar la lista", () => {
+    const lista = [tarea("A"), tarea("B")];
+    const nueva = { ...lista[1], estado: "Completada" as const };
+    const resultado = reemplazarTarea(lista, nueva);
+    expect(resultado[1]).toBe(nueva);
+    expect(resultado[0]).toBe(lista[0]);
+    expect(lista[1].estado).toBe("No completada");
   });
 
-  it("genera un id distinto para cada tarea", () => {
-    expect(crearTarea("u1", datos).id).not.toBe(crearTarea("u1", datos).id);
-  });
-});
-
-describe("cambiarEstado", () => {
-  it("al completar guarda la fecha de completado", () => {
-    const t = cambiarEstado(tarea("A"), "Completada", ahora);
-    expect(t.estado).toBe("Completada");
-    expect(t.fechaCompletada).toBe(ahora.toISOString());
-  });
-
-  it("al salir de 'Completada' borra la fecha de completado", () => {
-    const completada = cambiarEstado(tarea("A"), "Completada", ahora);
-    const reabierta = cambiarEstado(completada, "En proceso", ahora);
-    expect(reabierta.estado).toBe("En proceso");
-    expect(reabierta.fechaCompletada).toBeNull();
-  });
-
-  it("si el estado no cambia devuelve la misma tarea y conserva la fecha original", () => {
-    const completada = cambiarEstado(tarea("A"), "Completada", ahora);
-    expect(cambiarEstado(completada, "Completada", new Date("2030-01-01"))).toBe(completada);
-  });
-
-  it("no muta la tarea original", () => {
-    const original = tarea("A");
-    cambiarEstado(original, "Completada", ahora);
-    expect(original.estado).toBe("No completada");
-  });
-});
-
-describe("editar, ocultar y material", () => {
-  it("editarTarea cambia los datos pero conserva identidad, estado, material y visibilidad", () => {
-    const base = alternarOculta(agregarMaterial(cambiarEstado(tarea("A"), "En proceso"), {
-      titulo: "Apunte", tipo: "texto", contenido: "x",
-    }));
-    const editada = editarTarea(base, { ...datos, titulo: "Otro título", nota: 8.5 });
-    expect(editada.titulo).toBe("Otro título");
-    expect(editada.nota).toBe(8.5);
-    expect(editada.id).toBe(base.id);
-    expect(editada.usuarioId).toBe(base.usuarioId);
-    expect(editada.estado).toBe("En proceso");
-    expect(editada.oculta).toBe(true);
-    expect(editada.materialEstudio).toHaveLength(1);
-  });
-
-  it("alternarOculta oculta y vuelve a mostrar", () => {
-    const oculta = alternarOculta(tarea("A"));
-    expect(oculta.oculta).toBe(true);
-    expect(alternarOculta(oculta).oculta).toBe(false);
-  });
-
-  it("agrega material con id propio y lo quita por id", () => {
-    const conMaterial = agregarMaterial(tarea("A"), { titulo: "Guía", tipo: "link", contenido: "https://ejemplo.com" });
-    const [material] = conMaterial.materialEstudio;
-    expect(material?.id).toBeTruthy();
-    expect(quitarMaterial(conMaterial, material?.id ?? "").materialEstudio).toEqual([]);
-    expect(quitarMaterial(conMaterial, "no-existe").materialEstudio).toHaveLength(1);
+  it("quita por id y deja el resto", () => {
+    const lista = [tarea("A"), tarea("B")];
+    expect(quitarTarea(lista, lista[0].id).map((t) => t.titulo)).toEqual(["B"]);
   });
 });
 

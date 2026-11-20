@@ -5,28 +5,31 @@ import { Campo, propsDeError } from "./Campo";
 
 interface Props {
   material: MaterialEstudio[];
-  onAgregar: (material: Omit<MaterialEstudio, "id">) => void;
-  onQuitar: (materialId: string) => void;
+  ocupado: boolean;
+  /** Devuelve true si el servidor lo guardó; solo entonces se vacía el formulario. */
+  onAgregar: (material: Omit<MaterialEstudio, "id">) => Promise<boolean>;
+  onQuitar: (materialId: string) => Promise<boolean>;
 }
 
-export function MaterialPanel({ material, onAgregar, onQuitar }: Props) {
+export function MaterialPanel({ material, ocupado, onAgregar, onQuitar }: Props) {
   const uid = useId();
   const [tipo, setTipo] = useState("link");
   const [titulo, setTitulo] = useState("");
   const [contenido, setContenido] = useState("");
   const [errores, setErrores] = useState<Errores>({});
 
-  function enviar(evento: FormEvent<HTMLFormElement>) {
+  async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     const resultado = validarMaterial({ titulo, tipo, contenido });
     if (!resultado.ok) {
       setErrores(resultado.errores);
       return;
     }
-    onAgregar(resultado.datos);
-    setTitulo("");
-    setContenido("");
-    setErrores({});
+    if (await onAgregar(resultado.datos)) {
+      setTitulo("");
+      setContenido("");
+      setErrores({});
+    }
   }
 
   const id = (campo: string) => `${uid}-${campo}`;
@@ -52,7 +55,8 @@ export function MaterialPanel({ material, onAgregar, onQuitar }: Props) {
               <button
                 type="button"
                 className="boton-texto"
-                onClick={() => onQuitar(item.id)}
+                disabled={ocupado}
+                onClick={() => void onQuitar(item.id)}
                 aria-label={`Quitar el material ${item.titulo}`}
               >
                 Quitar
@@ -62,7 +66,7 @@ export function MaterialPanel({ material, onAgregar, onQuitar }: Props) {
         </ul>
       )}
 
-      <form className="material-formulario" onSubmit={enviar} noValidate aria-label="Agregar material de estudio">
+      <form className="material-formulario" onSubmit={(e) => void enviar(e)} noValidate aria-label="Agregar material de estudio">
         <div className="fila-campos">
           <Campo id={id("tipo")} etiqueta="Tipo" error={errores.tipo}>
             <select {...propsDeError(id("tipo"), errores.tipo)} value={tipo} onChange={(e) => setTipo(e.target.value)}>
@@ -101,7 +105,7 @@ export function MaterialPanel({ material, onAgregar, onQuitar }: Props) {
             />
           )}
         </Campo>
-        <button type="submit" className="boton">
+        <button type="submit" className="boton" disabled={ocupado}>
           Agregar material
         </button>
       </form>

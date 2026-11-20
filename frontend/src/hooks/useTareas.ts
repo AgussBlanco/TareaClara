@@ -1,55 +1,97 @@
-import { useCallback, useRef, useState } from "react";
-import {
-  agregarMaterial,
-  alternarOculta,
-  cambiarEstado,
-  crearTarea,
-  editarTarea,
-  quitarMaterial,
-} from "../lib/tareas";
+import { useCallback, useEffect, useState } from "react";
+import type { Api } from "../lib/api";
+import { quitarTarea, reemplazarTarea } from "../lib/tareas";
 import { mensajeDeError } from "../lib/utilidades";
-import { storage } from "../storage/storage";
 import type { DatosTarea, EstadoTarea, MaterialEstudio, Tarea } from "../types";
 
-/** Estado de las tareas del usuario: aplica las reglas de lib/tareas y guarda con storage. */
-export function useTareas(usuarioId: string) {
-  const [tareas, setTareas] = useState<Tarea[]>(() => storage.leerTareasDeUsuario(usuarioId));
-  const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
-  const actuales = useRef<Tarea[]>(tareas);
+/**
+ * Tareas del usuario guardadas en el servidor. No hay cambios "optimistas": la lista se actualiza
+ * con lo que el servidor responde, así la pantalla nunca muestra algo que no se guardó.
+ * Cada acción devuelve true si salió bien, para que el formulario sepa si puede cerrarse.
+ */
+export function useTareas(api: Api) {
+  const [tareas, setTareas] = useState<Tarea[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pendientes, setPendientes] = useState(0);
 
-  const aplicar = useCallback(
-    (transformar: (previas: Tarea[]) => Tarea[]) => {
-      const siguientes = transformar(actuales.current);
-      actuales.current = siguientes;
-      setTareas(siguientes);
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      setTareas(await api.listarTareas());
+      setError(null);
+    } catch (e) {
+      setError(mensajeDeError(e));
+    } finally {
+      setCargando(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    let vigente = true;
+    api
+      .listarTareas()
+      .then((lista) => {
+        if (vigente) setTareas(lista);
+      })
+      .catch((e: unknown) => {
+        if (vigente) setError(mensajeDeError(e));
+      })
+      .finally(() => {
+        if (vigente) setCargando(false);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [api]);
+
+  const ejecutar = useCallback(
+    async (accion: () => Promise<void>): Promise<boolean> => {
+      setError(null);
+      setPendientes((n) => n + 1);
       try {
-        storage.guardarTareasDeUsuario(usuarioId, siguientes);
-        setErrorGuardado(null);
-      } catch (error) {
-        setErrorGuardado(mensajeDeError(error));
+        await accion();
+        return true;
+      } catch (e) {
+        setError(mensajeDeError(e));
+        return false;
+      } finally {
+        setPendientes((n) => n - 1);
       }
     },
-    [usuarioId]
+    []
   );
 
-  const modificar = useCallback(
-    (id: string, cambio: (tarea: Tarea) => Tarea) => {
-      aplicar((previas) => previas.map((t) => (t.id === id ? cambio(t) : t)));
-    },
-    [aplicar]
+  const reemplazando = useCallback(
+    (pedir: () => Promise<Tarea>) =>
+      ejecutar(async () => {
+        const nueva = await pedir();
+        setTareas((previas) => reemplazarTarea(previas, nueva));
+      }),
+    [ejecutar]
   );
 
   return {
     tareas,
-    errorGuardado,
-    crear: (datos: DatosTarea) => aplicar((previas) => [...previas, crearTarea(usuarioId, datos)]),
-    editar: (id: string, datos: DatosTarea) => modificar(id, (t) => editarTarea(t, datos)),
-    cambiarEstado: (id: string, estado: EstadoTarea) => modificar(id, (t) => cambiarEstado(t, estado)),
-    alternarOculta: (id: string) => modificar(id, alternarOculta),
-    eliminar: (id: string) => aplicar((previas) => previas.filter((t) => t.id !== id)),
+    cargando,
+    error,
+    guardando: pendientes > 0,
+    recargar: cargar,
+    crear: (datos: DatosTarea) =>
+      ejecutar(async () => {
+        const nueva = await api.crearTarea(datos);
+        setTareas((previas) => [...previas, nueva]);
+      }),
+    editar: (id: string, datos: DatosTarea) => reemplazando(() => api.editarTarea(id, datos)),
+    cambiarEstado: (id: string, estado: EstadoTarea) => reemplazando(() => api.cambiarEstado(id, estado)),
+    cambiarOculta: (id: string, oculta: boolean) => reemplazando(() => api.cambiarOculta(id, oculta)),
+    eliminar: (id: string) =>
+      ejecutar(async () => {
+        await api.eliminarTarea(id);
+        setTareas((previas) => quitarTarea(previas, id));
+      }),
     agregarMaterial: (id: string, material: Omit<MaterialEstudio, "id">) =>
-      modificar(id, (t) => agregarMaterial(t, material)),
-    quitarMaterial: (id: string, materialId: string) =>
-      modificar(id, (t) => quitarMaterial(t, materialId)),
+      reemplazando(() => api.agregarMaterial(id, material)),
+    quitarMaterial: (id: string, materialId: string) => reemplazando(() => api.quitarMaterial(id, materialId)),
   };
 }

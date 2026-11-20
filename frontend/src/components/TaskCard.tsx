@@ -7,12 +7,14 @@ import { MaterialPanel } from "./MaterialPanel";
 interface Props {
   tarea: Tarea;
   ahora: Date;
-  onCambiarEstado: (id: string, estado: EstadoTarea) => void;
+  /** true mientras hay un cambio viajando al servidor: se bloquean las acciones para no pisar datos. */
+  ocupado: boolean;
+  onCambiarEstado: (id: string, estado: EstadoTarea) => Promise<boolean>;
   onEditar: (id: string) => void;
-  onAlternarOculta: (id: string) => void;
-  onEliminar: (id: string) => void;
-  onAgregarMaterial: (id: string, material: Omit<MaterialEstudio, "id">) => void;
-  onQuitarMaterial: (id: string, materialId: string) => void;
+  onAlternarOculta: (tarea: Tarea) => Promise<boolean>;
+  onEliminar: (id: string) => Promise<boolean>;
+  onAgregarMaterial: (id: string, material: Omit<MaterialEstudio, "id">) => Promise<boolean>;
+  onQuitarMaterial: (id: string, materialId: string) => Promise<boolean>;
 }
 
 function formatearNota(nota: number): string {
@@ -22,6 +24,7 @@ function formatearNota(nota: number): string {
 export function TaskCard({
   tarea,
   ahora,
+  ocupado,
   onCambiarEstado,
   onEditar,
   onAlternarOculta,
@@ -61,10 +64,11 @@ export function TaskCard({
           Estado
           <select
             value={tarea.estado}
+            disabled={ocupado}
             onChange={(e) => {
               const nuevo = ESTADOS.find((estado) => estado === e.target.value);
               if (nuevo) {
-                onCambiarEstado(tarea.id, nuevo);
+                void onCambiarEstado(tarea.id, nuevo);
               }
             }}
           >
@@ -79,7 +83,7 @@ export function TaskCard({
       </div>
 
       <div className="acciones acciones-tarjeta">
-        <button type="button" className="boton boton-chico" onClick={() => onEditar(tarea.id)}>
+        <button type="button" className="boton boton-chico" disabled={ocupado} onClick={() => onEditar(tarea.id)}>
           Editar
         </button>
         <button
@@ -91,14 +95,19 @@ export function TaskCard({
         >
           Material de estudio ({tarea.materialEstudio.length})
         </button>
-        <button type="button" className="boton boton-chico" onClick={() => onAlternarOculta(tarea.id)}>
+        <button type="button" className="boton boton-chico" disabled={ocupado} onClick={() => void onAlternarOculta(tarea)}>
           {tarea.oculta ? "Mostrar" : "Ocultar"}
         </button>
 
         {confirmandoEliminar ? (
           <span className="confirmacion" role="group" aria-label="Confirmar eliminación">
             <span>¿Eliminar esta tarea?</span>
-            <button type="button" className="boton boton-chico boton-peligro" onClick={() => onEliminar(tarea.id)}>
+            <button
+              type="button"
+              className="boton boton-chico boton-peligro"
+              disabled={ocupado}
+              onClick={() => void onEliminar(tarea.id)}
+            >
               Sí, eliminar
             </button>
             <button type="button" className="boton boton-chico" onClick={() => setConfirmandoEliminar(false)}>
@@ -106,7 +115,12 @@ export function TaskCard({
             </button>
           </span>
         ) : (
-          <button type="button" className="boton boton-chico boton-texto-peligro" onClick={() => setConfirmandoEliminar(true)}>
+          <button
+            type="button"
+            className="boton boton-chico boton-texto-peligro"
+            disabled={ocupado}
+            onClick={() => setConfirmandoEliminar(true)}
+          >
             Eliminar
           </button>
         )}
@@ -116,6 +130,7 @@ export function TaskCard({
         <div id={idMaterial}>
           <MaterialPanel
             material={tarea.materialEstudio}
+            ocupado={ocupado}
             onAgregar={(material) => onAgregarMaterial(tarea.id, material)}
             onQuitar={(materialId) => onQuitarMaterial(tarea.id, materialId)}
           />

@@ -1,54 +1,16 @@
-import {
-  type DatosTarea,
-  type EstadoTarea,
-  type MaterialEstudio,
-  type Prioridad,
-  type Tarea,
-} from "../types";
-import { normalizarTexto, generarId } from "./utilidades";
+import type { Prioridad, Tarea } from "../types";
+import { normalizarTexto } from "./utilidades";
 import { parsearFechaISO } from "./vencimiento";
 
 const ORDEN_PRIORIDAD: Record<Prioridad, number> = { Alta: 0, Media: 1, Baja: 2 };
 
-export function crearTarea(usuarioId: string, datos: DatosTarea, ahora: Date = new Date()): Tarea {
-  return {
-    id: generarId(),
-    usuarioId,
-    ...datos,
-    estado: "No completada",
-    materialEstudio: [],
-    oculta: false,
-    fechaCreacion: ahora.toISOString(),
-    fechaCompletada: null,
-  };
+/** Devuelve la lista con la tarea del servidor en lugar de la anterior (mismo id). */
+export function reemplazarTarea(tareas: Tarea[], nueva: Tarea): Tarea[] {
+  return tareas.map((t) => (t.id === nueva.id ? nueva : t));
 }
 
-export function editarTarea(tarea: Tarea, datos: DatosTarea): Tarea {
-  return { ...tarea, ...datos };
-}
-
-/** Al completar se guarda la fecha; al volver a otro estado esa fecha se borra. */
-export function cambiarEstado(tarea: Tarea, estado: EstadoTarea, ahora: Date = new Date()): Tarea {
-  if (tarea.estado === estado) {
-    return tarea;
-  }
-  return {
-    ...tarea,
-    estado,
-    fechaCompletada: estado === "Completada" ? ahora.toISOString() : null,
-  };
-}
-
-export function alternarOculta(tarea: Tarea): Tarea {
-  return { ...tarea, oculta: !tarea.oculta };
-}
-
-export function agregarMaterial(tarea: Tarea, material: Omit<MaterialEstudio, "id">): Tarea {
-  return { ...tarea, materialEstudio: [...tarea.materialEstudio, { id: generarId(), ...material }] };
-}
-
-export function quitarMaterial(tarea: Tarea, materialId: string): Tarea {
-  return { ...tarea, materialEstudio: tarea.materialEstudio.filter((m) => m.id !== materialId) };
+export function quitarTarea(tareas: Tarea[], id: string): Tarea[] {
+  return tareas.filter((t) => t.id !== id);
 }
 
 /**
