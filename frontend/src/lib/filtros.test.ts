@@ -20,7 +20,7 @@ describe("filtrarTareas", () => {
     expect(hayFiltrosActivos(FILTROS_INICIALES)).toBe(false);
   });
 
-  it("filtra por estado y por prioridad", () => {
+  it("RN-28: filtra por estado y por prioridad", () => {
     expect(filtrarTareas(lista, { ...FILTROS_INICIALES, estado: "En proceso" }).map((t) => t.titulo)).toEqual([
       "TP de funciones",
     ]);
@@ -29,17 +29,17 @@ describe("filtrarTareas", () => {
     ]);
   });
 
-  it("filtra por materia sin distinguir mayúsculas ni tildes", () => {
+  it("RN-28: filtra por materia sin distinguir mayúsculas ni tildes", () => {
     expect(filtrarTareas(lista, { ...FILTROS_INICIALES, materia: "fisica" })).toHaveLength(1);
   });
 
-  it("busca por título sin distinguir mayúsculas ni tildes", () => {
+  it("RN-28: busca por título sin distinguir mayúsculas ni tildes", () => {
     expect(filtrarTareas(lista, { ...FILTROS_INICIALES, busqueda: "REVOLUCION" })).toHaveLength(1);
     expect(filtrarTareas(lista, { ...FILTROS_INICIALES, busqueda: "  lab " })).toHaveLength(1);
     expect(filtrarTareas(lista, { ...FILTROS_INICIALES, busqueda: "inexistente" })).toHaveLength(0);
   });
 
-  it("combina varios filtros", () => {
+  it("RN-28: combina varios filtros", () => {
     const filtros = { ...FILTROS_INICIALES, estado: "En proceso" as const, materia: "Historia" };
     expect(filtrarTareas(lista, filtros)).toHaveLength(0);
     expect(hayFiltrosActivos(filtros)).toBe(true);
@@ -47,7 +47,7 @@ describe("filtrarTareas", () => {
 });
 
 describe("resumirTareas", () => {
-  it("cuenta pendientes, vencidas, próximas (incluye 'hoy') y completadas", () => {
+  it("RN-29: cuenta pendientes, vencidas, próximas (incluye 'hoy') y completadas", () => {
     const hoy = new Date(2026, 9, 2, 18, 0);
     const tareas = [
       tarea("vencida", { fechaLimite: "2026-09-30" }),

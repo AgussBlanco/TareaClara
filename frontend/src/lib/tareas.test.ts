@@ -24,7 +24,7 @@ describe("reemplazarTarea y quitarTarea", () => {
 });
 
 describe("ordenarTareas", () => {
-  it("pendientes por fecha, luego prioridad; sin fecha válida después; completadas al final", () => {
+  it("RN-27: pendientes por fecha, luego prioridad; sin fecha válida después; completadas al final", () => {
     const lista = [
       tarea("E", { estado: "Completada", fechaLimite: "2026-09-01", prioridad: "Alta" }),
       tarea("D", { fechaLimite: "", prioridad: "Alta" }),

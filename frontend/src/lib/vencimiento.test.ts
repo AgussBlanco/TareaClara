@@ -29,18 +29,18 @@ describe("parsearFechaISO", () => {
 });
 
 describe("calcularDiasRestantes", () => {
-  it("da 0 el mismo día sin importar la hora (caso límite)", () => {
+  it("RN-25: da 0 el mismo día sin importar la hora (caso límite)", () => {
     expect(calcularDiasRestantes("2026-10-02", new Date(2026, 9, 2, 0, 0))).toBe(0);
     expect(calcularDiasRestantes("2026-10-02", new Date(2026, 9, 2, 23, 59))).toBe(0);
   });
 
-  it("da positivo hacia el futuro y negativo hacia el pasado (caso correcto)", () => {
+  it("RN-25: da positivo hacia el futuro y negativo hacia el pasado (caso correcto)", () => {
     const hoy = new Date(2026, 9, 2, 18, 0);
     expect(calcularDiasRestantes("2026-10-03", hoy)).toBe(1);
     expect(calcularDiasRestantes("2026-09-29", hoy)).toBe(-3);
   });
 
-  it("cuenta bien al cambiar de mes y de año (caso límite)", () => {
+  it("RN-25: cuenta bien al cambiar de mes y de año (caso límite)", () => {
     expect(calcularDiasRestantes("2026-11-01", new Date(2026, 9, 31, 22, 0))).toBe(1);
     expect(calcularDiasRestantes("2027-01-01", new Date(2026, 11, 31, 22, 0))).toBe(1);
   });
@@ -54,15 +54,15 @@ describe("calcularEstadoVencimiento", () => {
   const base: TareaConFecha = { estado: "No completada", prioridad: "Alta", fechaLimite: "2026-10-04" };
   const hoy = new Date(2026, 9, 2, 18, 0);
 
-  it("devuelve nivel y días restantes (caso correcto)", () => {
+  it("RN-26: devuelve nivel y días restantes (caso correcto)", () => {
     expect(calcularEstadoVencimiento(base, hoy)).toEqual({ nivel: "critico", diasRestantes: 2 });
   });
 
-  it("una tarea próxima con prioridad no alta queda en 'atencion'", () => {
+  it("RN-26: una tarea próxima con prioridad no alta queda en 'atencion'", () => {
     expect(calcularEstadoVencimiento({ ...base, prioridad: "Media" }, hoy).nivel).toBe("atencion");
   });
 
-  it("una tarea completada nunca se marca, aunque esté vencida", () => {
+  it("RN-26: una tarea completada nunca se marca, aunque esté vencida", () => {
     const vencida: TareaConFecha = { ...base, estado: "Completada", fechaLimite: "2026-09-01" };
     expect(calcularEstadoVencimiento(vencida, hoy).nivel).toBe("completada");
   });
