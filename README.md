@@ -4,21 +4,10 @@ Aplicación web para que estudiantes organicen sus tareas: fecha límite, estado
 
 Proyecto final de la Generación T.
 
-## Enlaces
-
-> Completar después de publicar (ver `docs/guia-de-despliegue.md`).
-
-| Qué | Dirección |
-|---|---|
-| Aplicación (Netlify) | `https://<tu-sitio>.netlify.app` |
-| API (Render) | `https://<tu-api>.onrender.com` (comprobar con `/api/salud`) |
-| Repositorio (GitHub) | `https://github.com/<tu-usuario>/tareaclara` |
-
-El backend corre en el plan gratuito de Render: tras un rato sin uso, **la primera visita tarda cerca de un minuto** en responder. La aplicación lo avisa en pantalla.
 
 ## Qué incluye
 
-- Registro e inicio de sesión (contraseña con scrypt, sesión con token JWT de 7 días).
+- Registro e inicio de sesión.
 - Tareas con título, materia, fecha límite, prioridad, descripción y nota opcional.
 - Estados «No completada», «En proceso» y «Completada»; ocultar y eliminar tareas.
 - Material de estudio por tarea (enlaces y apuntes).
@@ -56,7 +45,6 @@ render.yaml   Blueprint de Render para el backend
 | [`docs/informe-de-pruebas.md`](docs/informe-de-pruebas.md) | Resultados de las pruebas y matriz de trazabilidad regla → test |
 | [`docs/manual-de-usuario.md`](docs/manual-de-usuario.md) | Cómo usar la aplicación |
 | [`docs/manual-tecnico.md`](docs/manual-tecnico.md) | Arquitectura, base de datos, API, seguridad, configuración y mantenimiento |
-| [`docs/guia-de-despliegue.md`](docs/guia-de-despliegue.md) | Cómo publicarla con GitHub, Neon, Render y Netlify |
 | [`AGENTS.md`](AGENTS.md) | Reglas para agentes de IA |
 
 ## Probarla en tu computadora
