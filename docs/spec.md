@@ -35,11 +35,11 @@ estudio, y ven de un vistazo qué está vencido o por vencer. Cada estudiante ti
 | RN-11 | La fecha límite es obligatoria, con formato `AAAA-MM-DD`, debe ser un día real del calendario (no existe `2026-02-31`) y el año debe estar entre 2000 y 2100. |
 | RN-12 | Se puede crear una tarea con fecha límite pasada: se muestra como vencida. |
 | RN-13 | La prioridad es Baja, Media o Alta. Si no se indica, es Media. |
-| RN-14 | Una tarea nueva empieza «No completada», sin nota, visible y sin material. El id y la fecha de creación los decide el servidor. El dueño es siempre el usuario autenticado: un `usuarioId` enviado en el cuerpo se ignora. |
+| RN-14 | Una tarea nueva empieza «No completada», visible y sin material (la nota es opcional, RN-17). El id y la fecha de creación los decide el servidor. El dueño es siempre el usuario autenticado: un `usuarioId` enviado en el cuerpo se ignora. |
 | RN-15 | Los estados son «No completada», «En proceso» y «Completada». Se puede pasar de cualquiera a cualquiera. |
 | RN-16 | Al pasar a «Completada» se guarda la fecha y hora de completado. Al volver a otro estado esa fecha se borra. Marcar el estado que ya tiene no cambia nada. |
 | RN-17 | La nota es opcional, va de 0 a 10 con hasta 2 decimales, y se puede quitar. Se puede cargar con cualquier estado. |
-| RN-18 | Editar cambia título, descripción, materia, fecha límite, prioridad y nota. No cambia el estado, el dueño, el material ni la fecha de creación. |
+| RN-18 | Editar (`PUT`) reemplaza título, descripción, materia, fecha límite, prioridad y nota: título, materia, fecha límite y prioridad son obligatorios; sin descripción queda vacía y sin nota queda sin cargar. No cambia el estado, el dueño, el material ni la fecha de creación. |
 | RN-19 | Ocultar saca la tarea de la lista principal pero conserva todos sus datos. Se puede volver a mostrar. |
 | RN-20 | Eliminar borra la tarea y todo su material de forma definitiva. La pantalla pide confirmación antes de hacerlo. |
 

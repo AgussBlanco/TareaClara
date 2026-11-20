@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { ErrorValidacion, type DetalleValidacion } from "../src/dominio/errores";
+import { ErrorNoEncontrado, ErrorValidacion, type DetalleValidacion } from "../src/dominio/errores";
 import { TareaServicio } from "../src/servicios/tareaServicio";
 import { RepositorioEnMemoria } from "./ayudas/repositorioEnMemoria";
 
 const AHORA = new Date("2026-11-17T15:30:00.000Z");
+const ANA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const LUIS = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 function crearServicio() {
   const repositorio = new RepositorioEnMemoria();
   let contador = 0;
   const servicio = new TareaServicio(repositorio, {
-    generarId: () => `id-${++contador}`,
+    generarId: () => `00000000-0000-4000-8000-${String(++contador).padStart(12, "0")}`,
     ahora: () => AHORA,
   });
   return { repositorio, servicio };
@@ -29,14 +31,17 @@ async function detallesDe(promesa: Promise<unknown>): Promise<DetalleValidacion[
   throw new Error("Se esperaba un ErrorValidacion y no hubo error");
 }
 
-describe("TareaServicio.crearTarea: casos correctos", () => {
-  it("crea la tarea con los valores iniciales que decide el servidor", async () => {
-    const { servicio, repositorio } = crearServicio();
-    const tarea = await servicio.crearTarea("ana", { ...valida, descripcion: "Ejercicios 1 al 5", prioridad: "Alta" });
+async function camposInvalidos(promesa: Promise<unknown>): Promise<string[]> {
+  return (await detallesDe(promesa)).map((d) => d.campo).sort();
+}
 
+describe("TareaServicio.crearTarea: casos correctos", () => {
+  it("RN-14: crea la tarea con los valores iniciales que decide el servidor", async () => {
+    const { servicio, repositorio } = crearServicio();
+    const tarea = await servicio.crearTarea(ANA, { ...valida, descripcion: "Ejercicios 1 al 5", prioridad: "Alta" });
     expect(tarea).toEqual({
-      id: "id-1",
-      usuarioId: "ana",
+      id: "00000000-0000-4000-8000-000000000001",
+      usuarioId: ANA,
       titulo: "TP de funciones",
       descripcion: "Ejercicios 1 al 5",
       materia: "Matemática",
@@ -52,49 +57,50 @@ describe("TareaServicio.crearTarea: casos correctos", () => {
     expect(repositorio.tareas).toHaveLength(1);
   });
 
-  it("usa prioridad Media y descripción vacía cuando no se envían", async () => {
-    const { servicio } = crearServicio();
-    const tarea = await servicio.crearTarea("ana", valida);
+  it("RN-13 y RN-10: usa prioridad Media y descripción vacía cuando no se envían", async () => {
+    const tarea = await crearServicio().servicio.crearTarea(ANA, valida);
     expect(tarea.prioridad).toBe("Media");
     expect(tarea.descripcion).toBe("");
   });
 
-  it("recorta los espacios sobrantes de los textos", async () => {
-    const { servicio } = crearServicio();
-    const tarea = await servicio.crearTarea("ana", { ...valida, titulo: "  TP  ", materia: " Lengua " });
+  it("RN-08 y RN-09: recorta los espacios sobrantes de los textos", async () => {
+    const tarea = await crearServicio().servicio.crearTarea(ANA, { ...valida, titulo: "  TP  ", materia: " Lengua " });
     expect(tarea.titulo).toBe("TP");
     expect(tarea.materia).toBe("Lengua");
   });
 
-  it("acepta una fecha límite en el pasado (la tarea figurará como vencida en la interfaz)", async () => {
-    const { servicio } = crearServicio();
-    const tarea = await servicio.crearTarea("ana", { ...valida, fechaLimite: "2020-01-31" });
+  it("RN-12: acepta una fecha límite en el pasado (figurará como vencida)", async () => {
+    const tarea = await crearServicio().servicio.crearTarea(ANA, { ...valida, fechaLimite: "2020-01-31" });
     expect(tarea.fechaLimite).toBe("2020-01-31");
   });
 
-  it("acepta el 29 de febrero de un año bisiesto", async () => {
+  it("RN-11: acepta el 29 de febrero de un año bisiesto y los años 2000 y 2100", async () => {
     const { servicio } = crearServicio();
-    await expect(servicio.crearTarea("ana", { ...valida, fechaLimite: "2028-02-29" })).resolves.toBeTruthy();
+    for (const fechaLimite of ["2028-02-29", "2000-01-01", "2100-12-31"]) {
+      await expect(servicio.crearTarea(ANA, { ...valida, fechaLimite })).resolves.toBeTruthy();
+    }
+  });
+
+  it("RN-17: acepta una nota al crear", async () => {
+    const tarea = await crearServicio().servicio.crearTarea(ANA, { ...valida, nota: 7.25 });
+    expect(tarea.nota).toBe(7.25);
   });
 });
 
 describe("TareaServicio.crearTarea: seguridad", () => {
-  it("ignora los campos que el cliente no debería decidir (dueño, id, estado, nota...)", async () => {
-    const { servicio } = crearServicio();
-    const tarea = await servicio.crearTarea("ana", {
+  it("RN-14: ignora los campos que el cliente no debería decidir (dueño, id, estado, oculta...)", async () => {
+    const tarea = await crearServicio().servicio.crearTarea(ANA, {
       ...valida,
-      usuarioId: "luis",
+      usuarioId: LUIS,
       id: "id-falso",
       estado: "Completada",
-      nota: 10,
       oculta: true,
       fechaCompletada: "2026-01-01T00:00:00.000Z",
       materialEstudio: [{ id: "x" }],
     });
-    expect(tarea.usuarioId).toBe("ana");
-    expect(tarea.id).toBe("id-1");
+    expect(tarea.usuarioId).toBe(ANA);
+    expect(tarea.id).toBe("00000000-0000-4000-8000-000000000001");
     expect(tarea.estado).toBe("No completada");
-    expect(tarea.nota).toBeNull();
     expect(tarea.oculta).toBe(false);
     expect(tarea.fechaCompletada).toBeNull();
     expect(tarea.materialEstudio).toEqual([]);
@@ -109,78 +115,163 @@ describe("TareaServicio.crearTarea: datos inválidos", () => {
     ["un arreglo", [valida]],
     ["un número", 42],
   ])("rechaza un cuerpo que es %s", async (_nombre, cuerpo) => {
-    const { servicio } = crearServicio();
-    expect((await detallesDe(servicio.crearTarea("ana", cuerpo))).map((d) => d.campo)).toEqual(["cuerpo"]);
+    expect(await camposInvalidos(crearServicio().servicio.crearTarea(ANA, cuerpo))).toEqual(["cuerpo"]);
   });
 
-  it("rechaza título vacío, solo espacios, ausente, de otro tipo o demasiado largo", async () => {
+  it("RN-08: rechaza título vacío, solo espacios, ausente, de otro tipo o de más de 100 caracteres", async () => {
     const { servicio } = crearServicio();
     for (const titulo of ["", "   ", undefined, 123, "x".repeat(101)]) {
-      const detalles = await detallesDe(servicio.crearTarea("ana", { ...valida, titulo }));
-      expect(detalles.map((d) => d.campo)).toEqual(["titulo"]);
+      expect(await camposInvalidos(servicio.crearTarea(ANA, { ...valida, titulo }))).toEqual(["titulo"]);
     }
   });
 
-  it("acepta un título de exactamente 100 caracteres", async () => {
-    const { servicio } = crearServicio();
-    await expect(servicio.crearTarea("ana", { ...valida, titulo: "x".repeat(100) })).resolves.toBeTruthy();
+  it("RN-08: acepta un título de exactamente 100 caracteres", async () => {
+    await expect(crearServicio().servicio.crearTarea(ANA, { ...valida, titulo: "x".repeat(100) })).resolves.toBeTruthy();
   });
 
-  it("rechaza materia ausente y descripción demasiado larga", async () => {
+  it("RN-09 y RN-10: rechaza materia ausente, materia de 51 caracteres y descripción de 501", async () => {
     const { servicio } = crearServicio();
-    const detalles = await detallesDe(
-      servicio.crearTarea("ana", { titulo: "TP", fechaLimite: "2026-12-01", descripcion: "x".repeat(501) })
-    );
-    expect(detalles.map((d) => d.campo).sort()).toEqual(["descripcion", "materia"]);
+    expect(
+      await camposInvalidos(servicio.crearTarea(ANA, { titulo: "TP", fechaLimite: "2026-12-01", descripcion: "x".repeat(501) }))
+    ).toEqual(["descripcion", "materia"]);
+    expect(await camposInvalidos(servicio.crearTarea(ANA, { ...valida, materia: "m".repeat(51) }))).toEqual(["materia"]);
   });
 
-  it.each(["", "mañana", "2026-02-31", "2026-13-01", "2026-1-5", "01/12/2026", "2027-02-29"])(
-    "rechaza la fecha límite '%s'",
+  it.each(["", "mañana", "2026-02-31", "2026-13-01", "2026-1-5", "01/12/2026", "2027-02-29", "1999-12-31", "2101-01-01", "0050-01-01"])(
+    "RN-11: rechaza la fecha límite '%s'",
     async (fechaLimite) => {
-      const { servicio } = crearServicio();
-      expect((await detallesDe(servicio.crearTarea("ana", { ...valida, fechaLimite }))).map((d) => d.campo)).toEqual([
-        "fechaLimite",
-      ]);
+      expect(await camposInvalidos(crearServicio().servicio.crearTarea(ANA, { ...valida, fechaLimite }))).toEqual(["fechaLimite"]);
     }
   );
 
-  it("rechaza fecha límite ausente o que no es texto", async () => {
+  it("RN-11: rechaza fecha límite ausente o que no es texto", async () => {
     const { servicio } = crearServicio();
     for (const fechaLimite of [undefined, 20261201, null]) {
-      expect((await detallesDe(servicio.crearTarea("ana", { ...valida, fechaLimite }))).map((d) => d.campo)).toEqual([
-        "fechaLimite",
-      ]);
+      expect(await camposInvalidos(servicio.crearTarea(ANA, { ...valida, fechaLimite }))).toEqual(["fechaLimite"]);
     }
   });
 
-  it("rechaza una prioridad que no es Baja, Media o Alta", async () => {
+  it("RN-13: rechaza una prioridad que no es Baja, Media o Alta", async () => {
     const { servicio } = crearServicio();
     for (const prioridad of ["Urgente", "alta", 1, null]) {
-      expect((await detallesDe(servicio.crearTarea("ana", { ...valida, prioridad }))).map((d) => d.campo)).toEqual([
-        "prioridad",
-      ]);
+      expect(await camposInvalidos(servicio.crearTarea(ANA, { ...valida, prioridad }))).toEqual(["prioridad"]);
     }
+  });
+
+  it.each([-0.01, 10.01, 11, 7.123, "8", NaN, Infinity, true, {}])("RN-17: rechaza la nota %j", async (nota) => {
+    expect(await camposInvalidos(crearServicio().servicio.crearTarea(ANA, { ...valida, nota }))).toEqual(["nota"]);
+  });
+
+  it.each([0, 10, 5.5, 9.99, null])("RN-17: acepta la nota %j", async (nota) => {
+    const tarea = await crearServicio().servicio.crearTarea(ANA, { ...valida, nota });
+    expect(tarea.nota).toBe(nota);
   });
 
   it("informa todos los errores juntos, no solo el primero", async () => {
-    const { servicio } = crearServicio();
-    const detalles = await detallesDe(servicio.crearTarea("ana", { titulo: "", fechaLimite: "x", prioridad: "Ya" }));
-    expect(detalles.map((d) => d.campo).sort()).toEqual(["fechaLimite", "materia", "prioridad", "titulo"]);
+    expect(await camposInvalidos(crearServicio().servicio.crearTarea(ANA, { titulo: "", fechaLimite: "x", prioridad: "Ya" }))).toEqual([
+      "fechaLimite",
+      "materia",
+      "prioridad",
+      "titulo",
+    ]);
   });
 
   it("no guarda nada cuando los datos son inválidos", async () => {
     const { servicio, repositorio } = crearServicio();
-    await detallesDe(servicio.crearTarea("ana", { titulo: "" }));
+    await detallesDe(servicio.crearTarea(ANA, { titulo: "" }));
     expect(repositorio.tareas).toHaveLength(0);
   });
 });
 
-describe("TareaServicio.listarTareas", () => {
-  it("devuelve solo las tareas del usuario", async () => {
+describe("TareaServicio.listarTareas y obtenerTarea", () => {
+  it("RN-07: cada usuario lista solo sus tareas", async () => {
     const { servicio } = crearServicio();
-    await servicio.crearTarea("ana", { ...valida, titulo: "De Ana" });
-    await servicio.crearTarea("luis", { ...valida, titulo: "De Luis" });
-    expect((await servicio.listarTareas("ana")).map((t) => t.titulo)).toEqual(["De Ana"]);
+    await servicio.crearTarea(ANA, { ...valida, titulo: "De Ana" });
+    await servicio.crearTarea(LUIS, { ...valida, titulo: "De Luis" });
+    expect((await servicio.listarTareas(ANA)).map((t) => t.titulo)).toEqual(["De Ana"]);
     expect(await servicio.listarTareas("nadie")).toEqual([]);
+  });
+
+  it("devuelve la tarea pedida", async () => {
+    const { servicio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, valida);
+    expect(await servicio.obtenerTarea(ANA, creada.id)).toEqual(creada);
+  });
+
+  it("RN-07: la tarea de otro usuario, una que no existe y un id mal formado dan el mismo error", async () => {
+    const { servicio } = crearServicio();
+    const deAna = await servicio.crearTarea(ANA, valida);
+    for (const id of [deAna.id, "00000000-0000-4000-8000-0000000000ff", "no-es-un-uuid", ""]) {
+      await expect(servicio.obtenerTarea(LUIS, id)).rejects.toBeInstanceOf(ErrorNoEncontrado);
+    }
+  });
+});
+
+describe("TareaServicio.editarTarea", () => {
+  const nuevos = { titulo: "Nuevo título", materia: "Lengua", fechaLimite: "2027-03-15", prioridad: "Baja", descripcion: "otra", nota: 9 };
+
+  it("RN-18: reemplaza los datos editables", async () => {
+    const { servicio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, valida);
+    const editada = await servicio.editarTarea(ANA, creada.id, nuevos);
+    expect(editada).toMatchObject(nuevos);
+  });
+
+  it("RN-18: no cambia el estado, el dueño, el material ni la fecha de creación aunque se envíen", async () => {
+    const { servicio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, valida);
+    const editada = await servicio.editarTarea(ANA, creada.id, { ...nuevos, estado: "Completada", usuarioId: LUIS, oculta: true, fechaCreacion: "2000-01-01T00:00:00.000Z" });
+    expect(editada).toMatchObject({
+      estado: "No completada",
+      usuarioId: ANA,
+      oculta: false,
+      fechaCreacion: creada.fechaCreacion,
+      id: creada.id,
+    });
+  });
+
+  it("RN-18: la prioridad es obligatoria al editar; sin descripción ni nota quedan vacías", async () => {
+    const { servicio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, { ...valida, descripcion: "algo", nota: 6 });
+    expect(await camposInvalidos(servicio.editarTarea(ANA, creada.id, valida))).toEqual(["prioridad"]);
+    const editada = await servicio.editarTarea(ANA, creada.id, { ...valida, prioridad: "Alta" });
+    expect(editada).toMatchObject({ descripcion: "", nota: null });
+  });
+
+  it("RN-17: se puede quitar la nota", async () => {
+    const { servicio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, { ...valida, nota: 6 });
+    expect((await servicio.editarTarea(ANA, creada.id, { ...valida, prioridad: "Media", nota: null })).nota).toBeNull();
+  });
+
+  it("RN-07: no se puede editar la tarea de otro usuario", async () => {
+    const { servicio } = crearServicio();
+    const deAna = await servicio.crearTarea(ANA, valida);
+    await expect(servicio.editarTarea(LUIS, deAna.id, nuevos)).rejects.toBeInstanceOf(ErrorNoEncontrado);
+    expect((await servicio.obtenerTarea(ANA, deAna.id)).titulo).toBe("TP de funciones");
+  });
+
+  it("RN-08 a RN-11: valida los datos nuevos y no guarda nada si son inválidos", async () => {
+    const { servicio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, valida);
+    expect(await camposInvalidos(servicio.editarTarea(ANA, creada.id, { ...nuevos, titulo: "", fechaLimite: "2026-02-31" }))).toEqual(["fechaLimite", "titulo"]);
+    expect((await servicio.obtenerTarea(ANA, creada.id)).titulo).toBe("TP de funciones");
+  });
+});
+
+describe("TareaServicio.eliminarTarea", () => {
+  it("RN-20: elimina la tarea", async () => {
+    const { servicio, repositorio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, valida);
+    await servicio.eliminarTarea(ANA, creada.id);
+    expect(repositorio.tareas).toHaveLength(0);
+  });
+
+  it("RN-07: no se puede eliminar la tarea de otro usuario ni una que no existe", async () => {
+    const { servicio, repositorio } = crearServicio();
+    const deAna = await servicio.crearTarea(ANA, valida);
+    await expect(servicio.eliminarTarea(LUIS, deAna.id)).rejects.toBeInstanceOf(ErrorNoEncontrado);
+    await expect(servicio.eliminarTarea(ANA, "no-es-un-uuid")).rejects.toBeInstanceOf(ErrorNoEncontrado);
+    expect(repositorio.tareas).toHaveLength(1);
   });
 });

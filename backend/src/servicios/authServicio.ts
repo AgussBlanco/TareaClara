@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ErrorNoAutenticado } from "../dominio/errores";
+import { esUuid } from "../dominio/ids";
 import type { Usuario } from "../dominio/tipos";
 import type { UsuarioRepositorio } from "../repositorios/usuarioRepositorio";
 import { hashearContrasena, verificarContrasena } from "./contrasenas";
@@ -59,8 +60,4 @@ export class AuthServicio {
     this.hashFalso ??= hashearContrasena(randomUUID());
     return this.hashFalso;
   }
-}
-
-function esUuid(valor: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
 }

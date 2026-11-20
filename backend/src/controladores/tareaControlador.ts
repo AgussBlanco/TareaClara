@@ -2,13 +2,18 @@ import type { Request, Response } from "express";
 import { ErrorNoAutenticado } from "../dominio/errores";
 import type { TareaServicio } from "../servicios/tareaServicio";
 
-/** Quién hace la petición. Lo deja puesto el middleware de identificación. */
+/** Quién hace la petición. Lo deja puesto el middleware de autenticación (RN-05). */
 function usuarioIdDe(res: Response): string {
   const id: unknown = res.locals.usuarioId;
   if (typeof id !== "string" || id === "") {
     throw new ErrorNoAutenticado();
   }
   return id;
+}
+
+function idDe(req: Request): string {
+  const id = req.params.id;
+  return typeof id === "string" ? id : "";
 }
 
 /**
@@ -31,5 +36,21 @@ export class TareaControlador {
   // GET /api/tareas  ->  200 OK
   listar = async (_req: Request, res: Response): Promise<void> => {
     res.json(await this.servicio.listarTareas(usuarioIdDe(res)));
+  };
+
+  // GET /api/tareas/:id  ->  200 OK
+  obtener = async (req: Request, res: Response): Promise<void> => {
+    res.json(await this.servicio.obtenerTarea(usuarioIdDe(res), idDe(req)));
+  };
+
+  // PUT /api/tareas/:id  ->  200 OK
+  editar = async (req: Request, res: Response): Promise<void> => {
+    res.json(await this.servicio.editarTarea(usuarioIdDe(res), idDe(req), req.body));
+  };
+
+  // DELETE /api/tareas/:id  ->  204 No Content
+  eliminar = async (req: Request, res: Response): Promise<void> => {
+    await this.servicio.eliminarTarea(usuarioIdDe(res), idDe(req));
+    res.status(204).end();
   };
 }

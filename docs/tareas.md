@@ -6,8 +6,8 @@ Cada tarea tiene un commit con su número. Se marca `[x]` cuando sus tests pasan
 - [x] **T02** Pasar la base a PostgreSQL: capa de conexión, migraciones y tests con PGlite.
 - [x] **T03** Repositorios de usuarios y tareas sobre PostgreSQL.
 - [x] **T04** Registro e inicio de sesión: scrypt, JWT, límite de intentos (RN-01 a RN-06).
-- [ ] **T05** API de tareas: crear, listar, ver, editar y eliminar (RN-07 a RN-14, RN-18, RN-20).
-- [ ] **T06** API de tareas: estado, nota, ocultar y material (RN-15 a RN-17, RN-19, RN-21 a RN-24).
+- [x] **T05** API de tareas: crear, listar, ver, editar (con nota) y eliminar (RN-07 a RN-14, RN-17, RN-18, RN-20).
+- [ ] **T06** API de tareas: estado, ocultar y material (RN-15, RN-16, RN-19, RN-21 a RN-24).
 - [ ] **T07** Configuración y despliegue del backend: variables de entorno, CORS, migraciones al arrancar, Render.
 - [ ] **T08** Frontend: cliente HTTP y sesión con token (RN-34).
 - [ ] **T09** Frontend: las tareas se leen y guardan en la API.
