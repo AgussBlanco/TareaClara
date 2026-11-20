@@ -15,11 +15,7 @@ export interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  contrasenaHash: string;
 }
-
-/** Lo que la interfaz puede conocer de un usuario: nunca el hash de la contraseña. */
-export type UsuarioPublico = Omit<Usuario, "contrasenaHash">;
 
 export interface Tarea {
   id: string;

@@ -57,6 +57,15 @@ describe("validarBorradorTarea", () => {
     expect(r.ok && r.datos.nota).toBe(7.5);
   });
 
+  it("RN-11: rechaza años fuera de 2000–2100", () => {
+    for (const fechaLimite of ["1999-12-31", "2101-01-01"]) {
+      const r = validarBorradorTarea({ ...borradorValido, fechaLimite });
+      expect(!r.ok && r.errores.fechaLimite).toMatch(/2000 y 2100/);
+    }
+    expect(validarBorradorTarea({ ...borradorValido, fechaLimite: "2000-01-01" }).ok).toBe(true);
+    expect(validarBorradorTarea({ ...borradorValido, fechaLimite: "2100-12-31" }).ok).toBe(true);
+  });
+
   it("acepta una fecha límite en el pasado (la tarea figurará como vencida)", () => {
     expect(validarBorradorTarea({ ...borradorValido, fechaLimite: "2020-01-01" }).ok).toBe(true);
   });
@@ -111,6 +120,13 @@ describe("validarRegistro y validarLogin", () => {
   it("normaliza el email y recorta el nombre", () => {
     const r = validarRegistro({ nombre: " Ana ", email: " ANA@Correo.com ", contrasena: "secreta1" });
     expect(r).toEqual({ ok: true, datos: { nombre: "Ana", email: "ana@correo.com", contrasena: "secreta1" } });
+  });
+
+  it("RN-01: la contraseña lleva entre 8 y 200 caracteres", () => {
+    const base = { nombre: "Ana", email: "ana@correo.com" };
+    expect(validarRegistro({ ...base, contrasena: "1234567" }).ok).toBe(false);
+    expect(validarRegistro({ ...base, contrasena: "12345678" }).ok).toBe(true);
+    expect(validarRegistro({ ...base, contrasena: "x".repeat(201) }).ok).toBe(false);
   });
 
   it("rechaza nombre corto, email inválido y contraseña corta", () => {

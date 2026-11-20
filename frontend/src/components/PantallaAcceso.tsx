@@ -45,8 +45,8 @@ export function PantallaAcceso({ onRegistrar, onIniciarSesion }: Props) {
         <p className="marca">TareaClara</p>
         <h1 id="titulo-acceso">{registrando ? "Crear cuenta" : "Ingresar"}</h1>
         <p className="acceso-intro">
-          Registra tus entregas, notas y material de estudio. Los datos se guardan solo en este
-          navegador.
+          Registra tus entregas, notas y material de estudio. Tus datos quedan guardados en tu
+          cuenta y los ves desde cualquier dispositivo.
         </p>
 
         <div className="pestanas" role="group" aria-label="Elegir acción">
@@ -93,7 +93,7 @@ export function PantallaAcceso({ onRegistrar, onIniciarSesion }: Props) {
             id="acceso-contrasena"
             etiqueta="Contraseña"
             error={errores.contrasena}
-            ayuda={registrando ? "Mínimo 6 caracteres." : undefined}
+            ayuda={registrando ? "Mínimo 8 caracteres." : undefined}
           >
             <input
               {...propsDeError("acceso-contrasena", errores.contrasena)}

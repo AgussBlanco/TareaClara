@@ -1,62 +1,75 @@
-import { useCallback, useState } from "react";
-import { autenticar, crearUsuario } from "../lib/cuentas";
+import { useCallback, useEffect, useState } from "react";
+import { ErrorApi, type Api } from "../lib/api";
+import { alVencerSesion } from "../lib/cliente";
 import { mensajeDeError } from "../lib/utilidades";
 import type { BorradorLogin, BorradorRegistro, Errores } from "../lib/validaciones";
-import { storage } from "../storage/storage";
-import type { Usuario, UsuarioPublico } from "../types";
+import type { AlmacenSesion } from "../storage/sesion";
+import type { Usuario } from "../types";
 
 export type ResultadoAcceso = { ok: true } | { ok: false; errores: Errores };
 
-function aPublico({ id, nombre, email }: Usuario): UsuarioPublico {
-  return { id, nombre, email };
-}
-
-function cargarSesion(): UsuarioPublico | null {
-  const id = storage.leerSesion();
-  if (id === null) {
-    return null;
+/** Traduce un error del servidor a errores por campo (o uno general) para mostrar en el formulario. */
+export function erroresDeAcceso(error: unknown): Errores {
+  if (error instanceof ErrorApi && Object.keys(error.detalles).length > 0) {
+    return { ...error.detalles };
   }
-  const usuario = storage.leerUsuarios().find((u) => u.id === id);
-  return usuario ? aPublico(usuario) : null;
+  return { general: mensajeDeError(error) };
 }
 
-export function useAuth() {
-  const [usuario, setUsuario] = useState<UsuarioPublico | null>(cargarSesion);
+/**
+ * Sesión del usuario. Si hay un token guardado, arranca "cargando" y lo valida con el servidor (RN-34);
+ * si ya no vale, se borra y se vuelve a la pantalla de acceso.
+ */
+export function useAuth(api: Api, sesion: AlmacenSesion) {
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [cargando, setCargando] = useState<boolean>(() => sesion.leer() !== null);
 
-  const registrar = useCallback(async (borrador: BorradorRegistro): Promise<ResultadoAcceso> => {
-    try {
-      const usuarios = storage.leerUsuarios();
-      const resultado = await crearUsuario(usuarios, borrador);
-      if (!resultado.ok) {
-        return resultado;
-      }
-      storage.guardarUsuarios([...usuarios, resultado.usuario]);
-      storage.guardarSesion(resultado.usuario.id);
-      setUsuario(aPublico(resultado.usuario));
-      return { ok: true };
-    } catch (error) {
-      return { ok: false, errores: { general: mensajeDeError(error) } };
+  useEffect(() => {
+    let vigente = true;
+    if (sesion.leer() !== null) {
+      api
+        .yo()
+        .then((u) => {
+          if (vigente) setUsuario(u);
+        })
+        .catch((error: unknown) => {
+          // Solo un 401 invalida el token; si el servidor no responde se conserva para reintentar.
+          if (vigente && error instanceof ErrorApi && error.estado === 401) {
+            sesion.borrar();
+          }
+        })
+        .finally(() => {
+          if (vigente) setCargando(false);
+        });
     }
-  }, []);
+    const dejarDeEscuchar = alVencerSesion(() => setUsuario(null));
+    return () => {
+      vigente = false;
+      dejarDeEscuchar();
+    };
+  }, [api, sesion]);
 
-  const iniciarSesion = useCallback(async (borrador: BorradorLogin): Promise<ResultadoAcceso> => {
-    try {
-      const resultado = await autenticar(storage.leerUsuarios(), borrador);
-      if (!resultado.ok) {
-        return resultado;
+  const entrar = useCallback(
+    async (pedir: () => Promise<{ token: string; usuario: Usuario }>): Promise<ResultadoAcceso> => {
+      try {
+        const { token, usuario: nuevo } = await pedir();
+        sesion.guardar(token);
+        setUsuario(nuevo);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, errores: erroresDeAcceso(error) };
       }
-      storage.guardarSesion(resultado.usuario.id);
-      setUsuario(aPublico(resultado.usuario));
-      return { ok: true };
-    } catch (error) {
-      return { ok: false, errores: { general: mensajeDeError(error) } };
-    }
-  }, []);
+    },
+    [sesion]
+  );
+
+  const registrar = useCallback((b: BorradorRegistro) => entrar(() => api.registro(b)), [api, entrar]);
+  const iniciarSesion = useCallback((b: BorradorLogin) => entrar(() => api.login(b)), [api, entrar]);
 
   const cerrarSesion = useCallback(() => {
-    storage.borrarSesion();
+    sesion.borrar();
     setUsuario(null);
-  }, []);
+  }, [sesion]);
 
-  return { usuario, registrar, iniciarSesion, cerrarSesion };
+  return { usuario, cargando, registrar, iniciarSesion, cerrarSesion };
 }

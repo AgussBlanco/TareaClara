@@ -14,9 +14,12 @@ export const LIMITES = {
   materiaMax: 50,
   materialTituloMax: 60,
   materialContenidoMax: 1000,
+  anioMin: 2000,
+  anioMax: 2100,
   nombreMin: 2,
   nombreMax: 60,
-  contrasenaMin: 6,
+  contrasenaMin: 8,
+  contrasenaMax: 200,
 } as const;
 
 export type Errores = Record<string, string>;
@@ -111,8 +114,13 @@ export function validarBorradorTarea(borrador: BorradorTarea): ResultadoValidaci
 
   if (borrador.fechaLimite === "") {
     errores.fechaLimite = "La fecha límite es obligatoria.";
-  } else if (parsearFechaISO(borrador.fechaLimite) === null) {
-    errores.fechaLimite = "La fecha límite no es válida.";
+  } else {
+    const fecha = parsearFechaISO(borrador.fechaLimite);
+    if (fecha === null) {
+      errores.fechaLimite = "La fecha límite no es válida.";
+    } else if (fecha.getFullYear() < LIMITES.anioMin || fecha.getFullYear() > LIMITES.anioMax) {
+      errores.fechaLimite = `El año debe estar entre ${LIMITES.anioMin} y ${LIMITES.anioMax}.`;
+    }
   }
 
   if (!esPrioridad(borrador.prioridad)) {
@@ -188,6 +196,8 @@ export function validarRegistro(borrador: BorradorRegistro): ResultadoValidacion
 
   if (borrador.contrasena.length < LIMITES.contrasenaMin) {
     errores.contrasena = `La contraseña debe tener al menos ${LIMITES.contrasenaMin} caracteres.`;
+  } else if (borrador.contrasena.length > LIMITES.contrasenaMax) {
+    errores.contrasena = `La contraseña no puede superar los ${LIMITES.contrasenaMax} caracteres.`;
   }
 
   if (Object.keys(errores).length > 0) {
