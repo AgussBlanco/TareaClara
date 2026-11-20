@@ -9,9 +9,9 @@ Cada tarea tiene un commit con su número. Se marca `[x]` cuando sus tests pasan
 - [x] **T05** API de tareas: crear, listar, ver, editar (con nota) y eliminar (RN-07 a RN-14, RN-17, RN-18, RN-20).
 - [x] **T06** API de tareas: estado, ocultar y material (RN-15, RN-16, RN-19, RN-21 a RN-24).
 - [x] **T07** Configuración y despliegue del backend: variables de entorno, CORS, migraciones al arrancar, Render.
-- [ ] **T08** Frontend: cliente HTTP y sesión con token (RN-34).
-- [ ] **T09** Frontend: las tareas se leen y guardan en la API.
-- [ ] **T10** Frontend: estados de carga y error, y configuración de Netlify.
+- [x] **T08** Frontend: cliente HTTP y sesión con token (RN-34).
+- [x] **T09** Frontend: las tareas se leen y guardan en la API.
+- [x] **T10** Frontend: estados de carga y error, y configuración de Netlify.
 - [ ] **T11** Prueba de punta a punta y informe de pruebas.
 - [ ] **T12** Relevamiento completo.
 - [ ] **T13** Manual de usuario y manual técnico.
