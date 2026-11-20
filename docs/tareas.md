@@ -15,5 +15,5 @@ Cada tarea tiene un commit con su número. Se marca `[x]` cuando sus tests pasan
 - [x] **T11** Prueba de punta a punta y informe de pruebas.
 - [x] **T12** Relevamiento completo.
 - [x] **T13** Manual de usuario y manual técnico.
-- [ ] **T14** Guía de despliegue y README.
+- [x] **T14** Guía de despliegue y README.
 - [ ] **T15** Revisión final contra la consigna: secretos, tests y enlaces.

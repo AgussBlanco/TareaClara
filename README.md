@@ -1,52 +1,96 @@
 # TareaClara
 
-Organizador de tareas para estudiantes: fechas límite, estados, prioridad, nota y material de estudio.
+Aplicación web para que estudiantes organicen sus tareas: fecha límite, estado, prioridad, nota y material de estudio, con un resumen de lo que está vencido o por vencer. Cada estudiante tiene su cuenta y sus datos viven en el servidor, así que los ve desde cualquier dispositivo.
 
-El proyecto tiene dos partes que todavía **no están conectadas entre sí**:
+Proyecto final de la Generación T.
 
-| Carpeta | Qué es | Estado |
-|---|---|---|
-| `frontend/` | App web en React + Vite + TypeScript. Guarda todo en `localStorage` y tiene login local. | Completa |
-| `backend/` | API en Node + Express + TypeScript + SQLite, con arquitectura Controller / Service / Repository. | Una funcionalidad implementada: crear tarea (y listar para comprobarla) |
+## Enlaces
 
-## Requisitos
+> Completar después de publicar (ver `docs/guia-de-despliegue.md`).
 
-Node.js 22.12 o superior y npm.
+| Qué | Dirección |
+|---|---|
+| Aplicación (Netlify) | `https://<tu-sitio>.netlify.app` |
+| API (Render) | `https://<tu-api>.onrender.com` (comprobar con `/api/salud`) |
+| Repositorio (GitHub) | `https://github.com/<tu-usuario>/tareaclara` |
 
-## Frontend
+El backend corre en el plan gratuito de Render: tras un rato sin uso, **la primera visita tarda cerca de un minuto** en responder. La aplicación lo avisa en pantalla.
 
-```bash
-cd frontend
-npm install
-npm run dev        # abre http://localhost:5173
-npm test           # tests de la lógica
-npm run build      # revisa los tipos y genera la versión de producción
+## Qué incluye
+
+- Registro e inicio de sesión (contraseña con scrypt, sesión con token JWT de 7 días).
+- Tareas con título, materia, fecha límite, prioridad, descripción y nota opcional.
+- Estados «No completada», «En proceso» y «Completada»; ocultar y eliminar tareas.
+- Material de estudio por tarea (enlaces y apuntes).
+- Urgencia por día de calendario, orden por vencimiento, filtros, búsqueda y resumen.
+- Funciona en celular.
+
+## Tecnologías
+
+| Parte | Tecnología |
+|---|---|
+| Frontend | React 19, Vite, TypeScript → Netlify |
+| Backend | Node ≥ 22.12, Express 5, TypeScript (capas Controlador → Servicio → Repositorio) → Render |
+| Base de datos | PostgreSQL (driver `pg`, migraciones propias) → Neon |
+| Pruebas | vitest, PGlite (PostgreSQL en memoria), Playwright |
+
+## Estructura del repositorio
+
+```
+backend/      API y migraciones SQL         (Node + Express + PostgreSQL)
+frontend/     Aplicación web                (React + Vite)
+e2e/          Recorrido completo en navegador (Playwright)
+docs/         Especificación, plan, tareas, relevamiento, manuales, informe de pruebas, guía de despliegue
+AGENTS.md     Reglas para agentes de IA que trabajen en el repositorio
+render.yaml   Blueprint de Render para el backend
 ```
 
-La app debe abrirse desde `localhost` o `https`: las contraseñas se protegen con la API de cifrado del
-navegador, que no funciona en otras direcciones `http`.
+## Documentación
 
-## Backend
+| Documento | Para qué |
+|---|---|
+| [`docs/relevamiento.md`](docs/relevamiento.md) | Problema, usuarios, requisitos, casos de uso y modelo de datos |
+| [`docs/spec.md`](docs/spec.md) | Reglas de negocio numeradas (RN-01 a RN-34), API y pantallas |
+| [`docs/plan.md`](docs/plan.md) | Decisiones técnicas, arquitectura y riesgos |
+| [`docs/tareas.md`](docs/tareas.md) | Lista de tareas del proyecto (una por commit) |
+| [`docs/informe-de-pruebas.md`](docs/informe-de-pruebas.md) | Resultados de las pruebas y matriz de trazabilidad regla → test |
+| [`docs/manual-de-usuario.md`](docs/manual-de-usuario.md) | Cómo usar la aplicación |
+| [`docs/manual-tecnico.md`](docs/manual-tecnico.md) | Arquitectura, base de datos, API, seguridad, configuración y mantenimiento |
+| [`docs/guia-de-despliegue.md`](docs/guia-de-despliegue.md) | Cómo publicarla con GitHub, Neon, Render y Netlify |
+| [`AGENTS.md`](AGENTS.md) | Reglas para agentes de IA |
+
+## Probarla en tu computadora
+
+Requisitos: Node.js 22.12 o superior y npm.
+
+**Solo las pruebas** (no necesitan base de datos ni variables de entorno):
 
 ```bash
+cd backend  && npm ci && npm test
+cd frontend && npm ci && npm test
+```
+
+**La aplicación completa** necesita una base PostgreSQL (por ejemplo una gratuita de Neon):
+
+```bash
+# 1. Backend
 cd backend
-npm install
-npm run seed       # crea dos usuarios de prueba: usuario-ana y usuario-luis
-npm run dev        # API en http://localhost:3000
-npm test           # tests unitarios, de base de datos y HTTP
+cp .env.example .env      # completar DATABASE_URL y JWT_SECRET; .env no se sube a Git
+npm ci
+npm run dev               # http://localhost:3000
+
+# 2. Frontend (otra terminal)
+cd frontend
+npm ci
+npm run dev               # http://localhost:5173
 ```
 
-Probar la funcionalidad implementada:
+Las variables de entorno están explicadas en `docs/manual-tecnico.md`, sección 5.
 
-```bash
-curl -X POST http://localhost:3000/api/tareas \
-  -H "Content-Type: application/json" -H "X-Usuario-Id: usuario-ana" \
-  -d '{"titulo":"TP de funciones","materia":"Matemática","fechaLimite":"2026-12-01","prioridad":"Alta"}'
+## Seguridad y secretos
 
-curl http://localhost:3000/api/tareas -H "X-Usuario-Id: usuario-ana"
-```
+El repositorio no contiene claves, contraseñas ni cadenas de conexión: la configuración va en variables de entorno y solo se versionan los archivos `.env.example`. Los archivos `.env` están en `.gitignore`.
 
-Variables opcionales: `PORT` (3000 por defecto) y `DB_PATH` (`data/tareaclara.db` por defecto).
+## Estado
 
-> El encabezado `X-Usuario-Id` es una identificación **temporal e insegura**, solo para desarrollar
-> hasta que existan el registro y el inicio de sesión. Ver `backend/src/middlewares/identificarUsuario.ts`.
+Las 15 tareas de `docs/tareas.md` están terminadas. 196 pruebas del backend, 80 del frontend y 44 comprobaciones de punta a punta pasan; las 34 reglas de negocio están cubiertas (ver el informe de pruebas). Limitaciones conocidas en `docs/manual-tecnico.md`, sección 9.
