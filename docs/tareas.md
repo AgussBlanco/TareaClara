@@ -13,7 +13,7 @@ Cada tarea tiene un commit con su número. Se marca `[x]` cuando sus tests pasan
 - [x] **T09** Frontend: las tareas se leen y guardan en la API.
 - [x] **T10** Frontend: estados de carga y error, y configuración de Netlify.
 - [x] **T11** Prueba de punta a punta y informe de pruebas.
-- [ ] **T12** Relevamiento completo.
+- [x] **T12** Relevamiento completo.
 - [ ] **T13** Manual de usuario y manual técnico.
 - [ ] **T14** Guía de despliegue y README.
 - [ ] **T15** Revisión final contra la consigna: secretos, tests y enlaces.
