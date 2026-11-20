@@ -3,6 +3,7 @@
 Aplicación web para que estudiantes organicen sus tareas: fecha límite, estado, prioridad, nota y material de estudio, con un resumen de lo que está vencido o por vencer. Cada estudiante tiene su cuenta y sus datos viven en el servidor, así que los ve desde cualquier dispositivo.
 
 Proyecto final de la Generación T.
+[Ingresa a tarea clara](https://tareaclara.netlify.app/)
 
 
 ## Qué incluye
