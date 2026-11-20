@@ -12,8 +12,14 @@ export interface ServidorDePrueba {
 }
 
 /** Levanta la API de verdad (puerto libre al azar) para probarla con peticiones HTTP reales. */
+export const ORIGEN_PERMITIDO = "https://tareaclara.netlify.app";
+
 export async function iniciarServidor(db: BaseDatos, limiteAuth = 1000): Promise<ServidorDePrueba> {
-  const servidor: Server = componer(db, { jwtSecreto: SECRETO_DE_PRUEBA, limiteAuth }).listen(0);
+  const servidor: Server = componer(db, {
+    jwtSecreto: SECRETO_DE_PRUEBA,
+    limiteAuth,
+    origenesPermitidos: [ORIGEN_PERMITIDO],
+  }).listen(0);
   await once(servidor, "listening");
   return {
     base: `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`,
