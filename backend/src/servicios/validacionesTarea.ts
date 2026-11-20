@@ -1,6 +1,6 @@
 import { ErrorValidacion, type DetalleValidacion } from "../dominio/errores";
 import { esFechaISOValida } from "../dominio/fechas";
-import { PRIORIDADES, type Prioridad } from "../dominio/tipos";
+import { ESTADOS, PRIORIDADES, type EstadoTarea, type Prioridad, type TipoMaterial } from "../dominio/tipos";
 
 // Estos límites se repiten en el frontend (frontend/src/lib/validaciones.ts).
 // El backend es la fuente de verdad: el frontend solo los usa para avisar antes.
@@ -9,6 +9,8 @@ export const LIMITES = {
   descripcionMax: 500,
   materiaMax: 50,
   notaMax: 10,
+  materialTituloMax: 60,
+  materialContenidoMax: 1000,
 } as const;
 
 /** Los seis datos que el estudiante escribe: sirven para crear y para editar una tarea. */
@@ -139,4 +141,71 @@ export function validarNuevaTarea(entrada: unknown): DatosTarea {
 /** RN-18: datos para editar una tarea. */
 export function validarEdicionTarea(entrada: unknown): DatosTarea {
   return validarDatosTarea(entrada, true);
+}
+
+function comoObjeto(entrada: unknown): Record<string, unknown> {
+  if (typeof entrada !== "object" || entrada === null || Array.isArray(entrada)) {
+    throw new ErrorValidacion([{ campo: "cuerpo", mensaje: "El cuerpo de la petición debe ser un objeto JSON." }]);
+  }
+  return entrada as Record<string, unknown>;
+}
+
+/** RN-15: el nuevo estado debe ser uno de los tres permitidos. */
+export function validarEstado(entrada: unknown): EstadoTarea {
+  const { estado } = comoObjeto(entrada);
+  if (typeof estado !== "string" || !(ESTADOS as readonly string[]).includes(estado)) {
+    throw new ErrorValidacion([{ campo: "estado", mensaje: "El estado debe ser No completada, En proceso o Completada." }]);
+  }
+  return estado as EstadoTarea;
+}
+
+/** RN-19: `oculta` tiene que ser verdadero o falso (no se aceptan textos como "true"). */
+export function validarOculta(entrada: unknown): boolean {
+  const { oculta } = comoObjeto(entrada);
+  if (typeof oculta !== "boolean") {
+    throw new ErrorValidacion([{ campo: "oculta", mensaje: "oculta debe ser true o false." }]);
+  }
+  return oculta;
+}
+
+export interface DatosMaterial {
+  titulo: string;
+  tipo: TipoMaterial;
+  contenido: string;
+}
+
+function esEnlaceWeb(texto: string): boolean {
+  if (!/^https?:\/\//i.test(texto)) {
+    return false;
+  }
+  try {
+    const url = new URL(texto);
+    return (url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "";
+  } catch {
+    return false;
+  }
+}
+
+/** RN-21 y RN-22: un material es un enlace web o un apunte, con título y contenido. */
+export function validarMaterial(entrada: unknown): DatosMaterial {
+  const cuerpo = comoObjeto(entrada);
+  const detalles: DetalleValidacion[] = [];
+
+  const titulo = textoObligatorio(cuerpo.titulo, "titulo", "El título", LIMITES.materialTituloMax, detalles);
+  const contenido = textoObligatorio(cuerpo.contenido, "contenido", "El contenido", LIMITES.materialContenidoMax, detalles);
+
+  let tipo: TipoMaterial = "texto";
+  if (cuerpo.tipo !== "link" && cuerpo.tipo !== "texto") {
+    detalles.push({ campo: "tipo", mensaje: "El tipo debe ser link o texto." });
+  } else {
+    tipo = cuerpo.tipo;
+    if (tipo === "link" && contenido !== "" && !esEnlaceWeb(contenido)) {
+      detalles.push({ campo: "contenido", mensaje: "El enlace debe empezar con http:// o https://." });
+    }
+  }
+
+  if (detalles.length > 0) {
+    throw new ErrorValidacion(detalles);
+  }
+  return { titulo, tipo, contenido };
 }

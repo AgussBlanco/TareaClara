@@ -176,3 +176,103 @@ describe("DELETE /api/tareas/:id", () => {
     expect((await api.get(`/api/tareas/${deAna.id}`, ana.token)).estado).toBe(200);
   });
 });
+
+describe("PATCH /api/tareas/:id/estado", () => {
+  it("RN-15 y RN-16: 200, cambia el estado y guarda la fecha de completado; al volver la borra", async () => {
+    const { cuerpo: creada } = await crear();
+    const completada = await api.patch(`/api/tareas/${creada.id}/estado`, { estado: "Completada" }, ana.token);
+    expect(completada.estado).toBe(200);
+    expect(completada.cuerpo.estado).toBe("Completada");
+    expect(new Date(completada.cuerpo.fechaCompletada).toISOString()).toBe(completada.cuerpo.fechaCompletada);
+
+    const vuelta = await api.patch(`/api/tareas/${creada.id}/estado`, { estado: "En proceso" }, ana.token);
+    expect(vuelta.cuerpo).toMatchObject({ estado: "En proceso", fechaCompletada: null });
+    expect((await api.get(`/api/tareas/${creada.id}`, ana.token)).cuerpo.estado).toBe("En proceso");
+  });
+
+  it("RN-15: 400 con un estado inválido", async () => {
+    const { cuerpo: creada } = await crear();
+    const { estado, cuerpo } = await api.patch(`/api/tareas/${creada.id}/estado`, { estado: "Terminada" }, ana.token);
+    expect(estado).toBe(400);
+    expect(cuerpo.error.detalles[0].campo).toBe("estado");
+  });
+
+  it("RN-07: 404 si la tarea es de otro usuario", async () => {
+    const { cuerpo: deAna } = await crear();
+    expect((await api.patch(`/api/tareas/${deAna.id}/estado`, { estado: "Completada" }, luis.token)).estado).toBe(404);
+  });
+});
+
+describe("PATCH /api/tareas/:id/oculta", () => {
+  it("RN-19: oculta y vuelve a mostrar, conservando todos los datos", async () => {
+    const { cuerpo: creada } = await crear({ ...valida, nota: 8 });
+    const oculta = await api.patch(`/api/tareas/${creada.id}/oculta`, { oculta: true }, ana.token);
+    expect(oculta.cuerpo).toEqual({ ...creada, oculta: true });
+    const visible = await api.patch(`/api/tareas/${creada.id}/oculta`, { oculta: false }, ana.token);
+    expect(visible.cuerpo).toEqual(creada);
+  });
+
+  it("RN-19: 400 si oculta no es true o false", async () => {
+    const { cuerpo: creada } = await crear();
+    expect((await api.patch(`/api/tareas/${creada.id}/oculta`, { oculta: "si" }, ana.token)).estado).toBe(400);
+  });
+});
+
+describe("material de estudio", () => {
+  const apunte = { titulo: "Resumen", tipo: "texto", contenido: "Las funciones lineales..." };
+
+  it("RN-21: POST agrega el material y devuelve la tarea completa", async () => {
+    const { cuerpo: creada } = await crear();
+    const { estado, cuerpo } = await api.post(`/api/tareas/${creada.id}/material`, apunte, ana.token);
+    expect(estado).toBe(201);
+    expect(cuerpo.materialEstudio).toHaveLength(1);
+    expect(cuerpo.materialEstudio[0]).toMatchObject(apunte);
+    expect(cuerpo.materialEstudio[0].id).toMatch(UUID);
+    expect((await api.get(`/api/tareas/${creada.id}`, ana.token)).cuerpo.materialEstudio).toHaveLength(1);
+  });
+
+  it("RN-22: 400 si un enlace no es http o https", async () => {
+    const { cuerpo: creada } = await crear();
+    const { estado, cuerpo } = await api.post(`/api/tareas/${creada.id}/material`, { titulo: "x", tipo: "link", contenido: "javascript:alert(1)" }, ana.token);
+    expect(estado).toBe(400);
+    expect(cuerpo.error.detalles[0].campo).toBe("contenido");
+  });
+
+  it("RN-23: 409 al pasar de 20 materiales", async () => {
+    const { cuerpo: creada } = await crear();
+    for (let i = 0; i < 20; i += 1) {
+      expect((await api.post(`/api/tareas/${creada.id}/material`, apunte, ana.token)).estado).toBe(201);
+    }
+    const { estado, cuerpo } = await api.post(`/api/tareas/${creada.id}/material`, apunte, ana.token);
+    expect(estado).toBe(409);
+    expect(cuerpo.error.codigo).toBe("CONFLICTO");
+  });
+
+  it("RN-23: pedidos simultáneos tampoco pasan del máximo", async () => {
+    const { cuerpo: creada } = await crear();
+    const respuestas = await Promise.all(
+      Array.from({ length: 25 }, () => api.post(`/api/tareas/${creada.id}/material`, apunte, ana.token))
+    );
+    expect(respuestas.filter((r) => r.estado === 201)).toHaveLength(20);
+    expect(respuestas.filter((r) => r.estado === 409)).toHaveLength(5);
+    expect((await api.get(`/api/tareas/${creada.id}`, ana.token)).cuerpo.materialEstudio).toHaveLength(20);
+  });
+
+  it("RN-24: DELETE quita solo ese material y devuelve la tarea", async () => {
+    const { cuerpo: creada } = await crear();
+    await api.post(`/api/tareas/${creada.id}/material`, { ...apunte, titulo: "A" }, ana.token);
+    const { cuerpo: conDos } = await api.post(`/api/tareas/${creada.id}/material`, { ...apunte, titulo: "B" }, ana.token);
+    const { estado, cuerpo } = await api.borrar(`/api/tareas/${creada.id}/material/${conDos.materialEstudio[0].id}`, ana.token);
+    expect(estado).toBe(200);
+    expect(cuerpo.materialEstudio.map((m: { titulo: string }) => m.titulo)).toEqual(["B"]);
+    expect(cuerpo.titulo).toBe("TP de funciones");
+  });
+
+  it("RN-07: 404 al tocar el material de la tarea de otro usuario, que queda intacto", async () => {
+    const { cuerpo: creada } = await crear();
+    const { cuerpo: con } = await api.post(`/api/tareas/${creada.id}/material`, apunte, ana.token);
+    expect((await api.post(`/api/tareas/${creada.id}/material`, apunte, luis.token)).estado).toBe(404);
+    expect((await api.borrar(`/api/tareas/${creada.id}/material/${con.materialEstudio[0].id}`, luis.token)).estado).toBe(404);
+    expect((await api.get(`/api/tareas/${creada.id}`, ana.token)).cuerpo.materialEstudio).toHaveLength(1);
+  });
+});

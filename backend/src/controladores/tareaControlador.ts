@@ -53,4 +53,25 @@ export class TareaControlador {
     await this.servicio.eliminarTarea(usuarioIdDe(res), idDe(req));
     res.status(204).end();
   };
+
+  // PATCH /api/tareas/:id/estado  ->  200 OK
+  cambiarEstado = async (req: Request, res: Response): Promise<void> => {
+    res.json(await this.servicio.cambiarEstado(usuarioIdDe(res), idDe(req), req.body));
+  };
+
+  // PATCH /api/tareas/:id/oculta  ->  200 OK
+  cambiarOculta = async (req: Request, res: Response): Promise<void> => {
+    res.json(await this.servicio.cambiarOculta(usuarioIdDe(res), idDe(req), req.body));
+  };
+
+  // POST /api/tareas/:id/material  ->  201 Created (devuelve la tarea completa)
+  agregarMaterial = async (req: Request, res: Response): Promise<void> => {
+    res.status(201).json(await this.servicio.agregarMaterial(usuarioIdDe(res), idDe(req), req.body));
+  };
+
+  // DELETE /api/tareas/:id/material/:materialId  ->  200 OK (devuelve la tarea completa)
+  quitarMaterial = async (req: Request, res: Response): Promise<void> => {
+    const materialId = typeof req.params.materialId === "string" ? req.params.materialId : "";
+    res.json(await this.servicio.quitarMaterial(usuarioIdDe(res), idDe(req), materialId));
+  };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ErrorNoEncontrado, ErrorValidacion, type DetalleValidacion } from "../src/dominio/errores";
+import { ErrorConflicto, ErrorNoEncontrado, ErrorValidacion, type DetalleValidacion } from "../src/dominio/errores";
 import { TareaServicio } from "../src/servicios/tareaServicio";
 import { RepositorioEnMemoria } from "./ayudas/repositorioEnMemoria";
 
@@ -273,5 +273,155 @@ describe("TareaServicio.eliminarTarea", () => {
     await expect(servicio.eliminarTarea(LUIS, deAna.id)).rejects.toBeInstanceOf(ErrorNoEncontrado);
     await expect(servicio.eliminarTarea(ANA, "no-es-un-uuid")).rejects.toBeInstanceOf(ErrorNoEncontrado);
     expect(repositorio.tareas).toHaveLength(1);
+  });
+});
+
+describe("TareaServicio.cambiarEstado", () => {
+  it("RN-15: se puede pasar de cualquier estado a cualquier otro", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    for (const estado of ["En proceso", "Completada", "No completada", "Completada", "En proceso"]) {
+      expect((await servicio.cambiarEstado(ANA, id, { estado })).estado).toBe(estado);
+    }
+  });
+
+  it("RN-16: al completar guarda la fecha y hora de completado", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    expect((await servicio.cambiarEstado(ANA, id, { estado: "Completada" })).fechaCompletada).toBe("2026-11-17T15:30:00.000Z");
+  });
+
+  it("RN-16: al volver a otro estado la fecha de completado se borra", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    await servicio.cambiarEstado(ANA, id, { estado: "Completada" });
+    expect((await servicio.cambiarEstado(ANA, id, { estado: "En proceso" })).fechaCompletada).toBeNull();
+  });
+
+  it("RN-16: marcar el estado que ya tiene no cambia nada, ni la fecha de completado", async () => {
+    const repositorio = new RepositorioEnMemoria();
+    let hora = new Date("2026-11-17T15:30:00.000Z");
+    const servicio = new TareaServicio(repositorio, { generarId: () => "00000000-0000-4000-8000-000000000001", ahora: () => hora });
+    const { id } = await servicio.crearTarea(ANA, valida);
+    const primera = await servicio.cambiarEstado(ANA, id, { estado: "Completada" });
+    hora = new Date("2026-11-20T10:00:00.000Z");
+    const segunda = await servicio.cambiarEstado(ANA, id, { estado: "Completada" });
+    expect(segunda.fechaCompletada).toBe(primera.fechaCompletada);
+  });
+
+  it("RN-15: rechaza un estado que no existe, o que no es texto", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    for (const estado of ["Terminada", "completada", "", 1, null, undefined]) {
+      expect(await camposInvalidos(servicio.cambiarEstado(ANA, id, { estado }))).toEqual(["estado"]);
+    }
+  });
+
+  it("RN-07: no se puede cambiar el estado de la tarea de otro usuario", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    await expect(servicio.cambiarEstado(LUIS, id, { estado: "Completada" })).rejects.toBeInstanceOf(ErrorNoEncontrado);
+  });
+});
+
+describe("TareaServicio.cambiarOculta", () => {
+  it("RN-19: oculta y vuelve a mostrar sin perder ningún dato", async () => {
+    const { servicio } = crearServicio();
+    const creada = await servicio.crearTarea(ANA, { ...valida, nota: 8, descripcion: "d" });
+    const oculta = await servicio.cambiarOculta(ANA, creada.id, { oculta: true });
+    expect(oculta).toEqual({ ...creada, oculta: true });
+    expect(await servicio.cambiarOculta(ANA, creada.id, { oculta: false })).toEqual(creada);
+  });
+
+  it("RN-19: rechaza valores que no son true o false", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    for (const oculta of ["true", 1, null, undefined]) {
+      expect(await camposInvalidos(servicio.cambiarOculta(ANA, id, { oculta }))).toEqual(["oculta"]);
+    }
+  });
+});
+
+describe("TareaServicio: material de estudio", () => {
+  const apunte = { titulo: "Resumen", tipo: "texto", contenido: "Las funciones lineales..." };
+
+  it("RN-21: agrega un apunte y un enlace", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    await servicio.agregarMaterial(ANA, id, apunte);
+    const conAmbos = await servicio.agregarMaterial(ANA, id, { titulo: "Video", tipo: "link", contenido: "https://youtu.be/abc" });
+    expect(conAmbos.materialEstudio.map((m) => [m.titulo, m.tipo])).toEqual([["Resumen", "texto"], ["Video", "link"]]);
+    expect(conAmbos.materialEstudio[0]?.id).toMatch(/^00000000-0000-4000-8000-/);
+  });
+
+  it("RN-21: recorta espacios y rechaza título o contenido vacío, o que se pasen de largo", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    const guardado = await servicio.agregarMaterial(ANA, id, { ...apunte, titulo: "  Resumen  " });
+    expect(guardado.materialEstudio[0]?.titulo).toBe("Resumen");
+    expect(await camposInvalidos(servicio.agregarMaterial(ANA, id, { ...apunte, titulo: "" }))).toEqual(["titulo"]);
+    expect(await camposInvalidos(servicio.agregarMaterial(ANA, id, { ...apunte, titulo: "t".repeat(61) }))).toEqual(["titulo"]);
+    expect(await camposInvalidos(servicio.agregarMaterial(ANA, id, { ...apunte, contenido: " " }))).toEqual(["contenido"]);
+    expect(await camposInvalidos(servicio.agregarMaterial(ANA, id, { ...apunte, contenido: "c".repeat(1001) }))).toEqual(["contenido"]);
+    await expect(servicio.agregarMaterial(ANA, id, { ...apunte, titulo: "t".repeat(60), contenido: "c".repeat(1000) })).resolves.toBeTruthy();
+  });
+
+  it("RN-21: rechaza un tipo que no es link ni texto", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    for (const tipo of ["video", "", undefined, 1]) {
+      expect(await camposInvalidos(servicio.agregarMaterial(ANA, id, { ...apunte, tipo }))).toEqual(["tipo"]);
+    }
+  });
+
+  it.each(["ftp://sitio.com/a", "javascript:alert(1)", "www.sitio.com", "sitio.com", "https://", "data:text/html,hola"])(
+    "RN-22: rechaza el enlace '%s'",
+    async (contenido) => {
+      const { servicio } = crearServicio();
+      const { id } = await servicio.crearTarea(ANA, valida);
+      expect(await camposInvalidos(servicio.agregarMaterial(ANA, id, { titulo: "x", tipo: "link", contenido }))).toEqual(["contenido"]);
+    }
+  );
+
+  it("RN-22: un apunte puede empezar con cualquier texto (solo los enlaces se revisan)", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    await expect(servicio.agregarMaterial(ANA, id, { titulo: "x", tipo: "texto", contenido: "javascript:alert(1)" })).resolves.toBeTruthy();
+  });
+
+  it("RN-23: no permite más de 20 materiales por tarea", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    for (let i = 0; i < 20; i += 1) {
+      await servicio.agregarMaterial(ANA, id, apunte);
+    }
+    await expect(servicio.agregarMaterial(ANA, id, apunte)).rejects.toBeInstanceOf(ErrorConflicto);
+    expect((await servicio.obtenerTarea(ANA, id)).materialEstudio).toHaveLength(20);
+  });
+
+  it("RN-24: quita un material y deja los otros", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    await servicio.agregarMaterial(ANA, id, { ...apunte, titulo: "A" });
+    const dos = await servicio.agregarMaterial(ANA, id, { ...apunte, titulo: "B" });
+    const quedo = await servicio.quitarMaterial(ANA, id, dos.materialEstudio[0]!.id);
+    expect(quedo.materialEstudio.map((m) => m.titulo)).toEqual(["B"]);
+    expect(quedo.titulo).toBe("TP de funciones");
+  });
+
+  it("RN-07: no se puede agregar ni quitar material en la tarea de otro usuario", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    const con = await servicio.agregarMaterial(ANA, id, apunte);
+    await expect(servicio.agregarMaterial(LUIS, id, apunte)).rejects.toBeInstanceOf(ErrorNoEncontrado);
+    await expect(servicio.quitarMaterial(LUIS, id, con.materialEstudio[0]!.id)).rejects.toBeInstanceOf(ErrorNoEncontrado);
+    expect((await servicio.obtenerTarea(ANA, id)).materialEstudio).toHaveLength(1);
+  });
+
+  it("devuelve 'no encontrado' si el id de la tarea o del material no tiene forma de UUID", async () => {
+    const { servicio } = crearServicio();
+    const { id } = await servicio.crearTarea(ANA, valida);
+    await expect(servicio.agregarMaterial(ANA, "xx", apunte)).rejects.toBeInstanceOf(ErrorNoEncontrado);
+    await expect(servicio.quitarMaterial(ANA, id, "xx")).rejects.toBeInstanceOf(ErrorNoEncontrado);
   });
 });
